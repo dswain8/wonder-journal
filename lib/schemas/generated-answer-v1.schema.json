@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wonder-journal.local/schemas/generated-answer-v1.schema.json",
+  "title": "Wonder Journal Generated Answer V1",
+  "description": "Structured output contract for a child-friendly question answer experience.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "question",
+    "topic",
+    "fact_answer",
+    "story_title",
+    "story_text",
+    "narration_text",
+    "wonder_question",
+    "scene_tags",
+    "safety_flags",
+    "confidence"
+  ],
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": [
+        "benchmark",
+        "model",
+        "hybrid",
+        "fallback"
+      ],
+      "description": "Optional provenance hint. The server stamps the trusted value."
+    },
+    "question": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200,
+      "description": "The user's original question."
+    },
+    "benchmark_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^BQ-[0-9]{2}$",
+      "description": "Optional benchmark identifier when the question maps to a known gold-standard question."
+    },
+    "topic": {
+      "type": "string",
+      "enum": [
+        "animals",
+        "space",
+        "nature",
+        "body",
+        "food",
+        "weather",
+        "ocean",
+        "transport",
+        "colors",
+        "wonder"
+      ]
+    },
+    "fact_answer": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 220,
+      "description": "A short, factual, age-appropriate explanation. This should be the truth anchor."
+    },
+    "story_title": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 80
+    },
+    "story_text": {
+      "type": "string",
+      "minLength": 120,
+      "maxLength": 1600,
+      "description": "A short picture-book style story answer."
+    },
+    "narration_text": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 500,
+      "description": "A shorter spoken version than story_text, optimized for read-aloud."
+    },
+    "wonder_question": {
+      "type": "string",
+      "minLength": 12,
+      "maxLength": 140,
+      "pattern": "^I wonder.*",
+      "description": "A follow-up curiosity prompt that must start with 'I wonder'."
+    },
+    "scene_tags": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 32,
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "description": "Tags used to match a reusable scene or image."
+    },
+    "safety_flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "none",
+          "low-confidence",
+          "sensitive-science",
+          "needs-parent-review",
+          "medical-adjacent",
+          "too-abstract",
+          "image-risk"
+        ]
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}
