@@ -114,21 +114,79 @@ function assertLength(
 }
 
 export function extractJsonObject(raw: string): unknown {
+  const trimmed = raw.trim();
+
   try {
-    return JSON.parse(raw);
+    return JSON.parse(trimmed);
   } catch {
     // Small local models can still wrap JSON in text. Keep this as a recovery path,
-    // but prefer strict JSON.parse whenever Ollama's structured output works.
+    // but prefer strict JSON.parse whenever Ollama returns a clean object.
   }
 
+  const jsonText = extractFirstBalancedJsonObject(trimmed);
+  if (!jsonText) {
+    throw new Error(
+      `Model did not return a JSON object. Raw output: ${trimmed.slice(0, 1000)}`,
+    );
+  }
+
+  try {
+    return JSON.parse(jsonText);
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : 'Unknown JSON parse error';
+    throw new Error(
+      `Failed to parse extracted JSON: ${message}. Raw output: ${trimmed.slice(0, 1000)}`,
+    );
+  }
+}
+
+function extractFirstBalancedJsonObject(raw: string): string | null {
   const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-
-  if (start < 0 || end <= start) {
-    throw new Error('Model did not return a JSON object');
+  if (start < 0) {
+    return null;
   }
 
-  return JSON.parse(raw.slice(start, end + 1));
+  let depth = 0;
+  let inString = false;
+  let isEscaped = false;
+
+  for (let index = start; index < raw.length; index += 1) {
+    const char = raw[index];
+
+    if (isEscaped) {
+      isEscaped = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      isEscaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (char === '{') {
+      depth += 1;
+    }
+
+    if (char === '}') {
+      depth -= 1;
+
+      if (depth === 0) {
+        return raw.slice(start, index + 1);
+      }
+    }
+  }
+
+  return null;
 }
 
 export function validateGeneratedAnswerV1(

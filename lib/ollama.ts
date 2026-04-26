@@ -4,10 +4,6 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen3:4b';
 
 interface GenerateWithOllamaOptions {
   model?: string;
-  format?: unknown;
-  temperature?: number;
-  topP?: number;
-  numPredict?: number;
 }
 
 export async function generateWithOllama(
@@ -24,11 +20,10 @@ export async function generateWithOllama(
       prompt,
       system,
       stream: false,
-      ...(options.format ? { format: options.format } : {}),
       options: {
-        temperature: options.temperature ?? 0.8,
-        top_p: options.topP ?? 0.9,
-        num_predict: options.numPredict ?? 600,
+        temperature: 0,
+        top_p: 1,
+        num_predict: 600,
       },
     }),
   });

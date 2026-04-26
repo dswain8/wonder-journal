@@ -9,7 +9,6 @@ import {
 } from './types';
 import { generateWithOllama } from './ollama';
 import {
-  GENERATED_ANSWER_V1_SCHEMA,
   extractJsonObject,
   toGeneratedStory,
   validateGeneratedAnswerV1,
@@ -38,14 +37,21 @@ STRICT RULES:
 7. Include what things look, sound, or feel like.
 8. Use the child's name often. Do not assume a mother, father, or any specific family setup.
 
-RESPONSE FORMAT — you MUST respond with ONLY this JSON, nothing else before or after:
-{"question": "the original child question", "benchmark_id": null, "topic": "one word from this list: animals space nature body food weather ocean transport colors wonder", "fact_answer": "one or two simple factual sentences", "story_title": "short fun title", "story_text": "the full story text", "narration_text": "a shorter spoken version for read aloud", "wonder_question": "a follow-up question starting with I wonder...", "scene_tags": ["2-8 visual tags like moon, car, night"], "safety_flags": ["none"], "confidence": 0.0}
+RESPONSE FORMAT (STRICT):
+- You MUST return ONLY valid JSON.
+- Do NOT include markdown, explanations, or text before/after.
+- Start with { and end with }.
+- If you cannot comply, return {}.
 
-The "topic" must be exactly one of: animals, space, nature, body, food, weather, ocean, transport, colors, wonder.
-The "fact_answer" must be true even if the story is hidden.
-The "narration_text" must be shorter and peppier than the story.
-The "scene_tags" must describe visible things an illustration could show.
-Do NOT write anything outside the JSON object.`;
+JSON STRUCTURE:
+{"question": "...", "benchmark_id": null, "topic": "animals|space|nature|body|food|weather|ocean|transport|colors|wonder", "fact_answer": "...", "story_title": "...", "story_text": "...", "narration_text": "...", "wonder_question": "I wonder...", "scene_tags": ["..."], "confidence": 0.9}
+
+IMPORTANT:
+- The "topic" must be exactly one of: animals, space, nature, body, food, weather, ocean, transport, colors, wonder.
+- The "fact_answer" must be true even if the story is hidden.
+- The "narration_text" must be shorter and peppier than the story.
+- The "wonder_question" must start with "I wonder".
+- The "scene_tags" must describe visible things an illustration could show.`;
 }
 
 export async function generateAnswer(
@@ -78,12 +84,7 @@ Write a structured answer for Wonder Journal.
 Use ${childName} as the main character in the story.
 Respond with ONLY valid JSON matching the required schema.`;
 
-  const raw = await generateWithOllama(prompt, buildStorySystemPrompt(profile), {
-    format: GENERATED_ANSWER_V1_SCHEMA,
-    temperature: benchmark ? 0.4 : 0.7,
-    topP: benchmark ? 0.85 : 0.9,
-    numPredict: 900,
-  });
+  const raw = await generateWithOllama(prompt, buildStorySystemPrompt(profile));
 
   try {
     return validateGeneratedAnswerV1(extractJsonObject(raw), {
