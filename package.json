@@ -8,7 +8,8 @@
     "start": "node ./node_modules/next/dist/bin/next start",
     "check:ollama": "node scripts/check-ollama.mjs",
     "check:ollama:generate": "node scripts/check-ollama.mjs --generate",
-    "evaluate:contract": "node scripts/evaluate-contract.mjs"
+    "evaluate:contract": "node scripts/evaluate-contract.mjs",
+    "qa:smoke": "node scripts/qa-smoke.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",

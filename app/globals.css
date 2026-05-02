@@ -250,6 +250,38 @@ body {
   }
 }
 
+@keyframes wj-road-rush {
+  0% {
+    transform: translateX(110%);
+  }
+
+  100% {
+    transform: translateX(-140%);
+  }
+}
+
+@keyframes wj-slow-drift {
+  0%,
+  100% {
+    transform: translateX(0) translateY(0);
+  }
+
+  50% {
+    transform: translateX(-6px) translateY(2px);
+  }
+}
+
+@keyframes wj-moon-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 34px rgba(255, 224, 138, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 58px rgba(255, 224, 138, 0.8);
+  }
+}
+
 .wj-float-a {
   animation: wj-float-a 6s ease-in-out infinite;
 }

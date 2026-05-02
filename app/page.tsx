@@ -116,11 +116,11 @@ export default function Home() {
   if (!hasHydrated) {
     return (
       <DesktopStage
-        eyebrow="desktop + mobile"
+        eyebrow="welcome"
         title="Wonder Journal"
-        description="A child-facing curiosity app with a real laptop review shell and a true phone-first primary experience."
+        description="A warm curiosity journal that helps a child ask, listen, look, and remember."
         notes={[
-          { label: 'Surface', value: 'Hydrating the local profile and getting the right state ready.' },
+          { label: 'Getting ready', value: 'Opening the family journal.' },
         ]}
       >
         <div className="mx-auto min-h-[60vh] max-w-[420px]" />
@@ -131,12 +131,12 @@ export default function Home() {
   if (!profile.onboardingComplete) {
     return (
       <DesktopStage
-        eyebrow="setup once"
-        title="Pair the parent setup with the child magic."
-        description="On phone, this is a warm onboarding ritual. On desktop, it becomes your review and testing workspace while you iterate on the same product flow."
+        eyebrow="setup"
+        title="Make the journal feel like home."
+        description="Add the parent and child details once, then choose a curious guide for the child’s questions."
         notes={[
-          { label: 'Why this screen exists', value: 'Collect the family profile once, then move the child into a calmer, lighter-touch asking experience.' },
-          { label: 'Guide system', value: 'Gargi and Nachi stay in onboarding and tone-setting, not as heavy mythology lessons on the home screen.' },
+          { label: 'Why this matters', value: 'The answer should feel personal without making the child fill out forms.' },
+          { label: 'Guides', value: 'Gargi and Nachi bring an Indian-rooted spirit of curiosity into the experience.' },
         ]}
         checklist={[
           'Does setup feel parent-friendly without becoming form-heavy?',
@@ -163,12 +163,12 @@ export default function Home() {
   if (isLoading) {
     return (
       <DesktopStage
-        eyebrow="local generation"
-        title="This is the LLM handoff moment."
-        description="The app has received the question and is turning it into a short answer, story wrapper, and reveal state. This is the latency moment to watch on both laptop and phone."
+        eyebrow="answer coming"
+        title="A little wonder is taking shape."
+        description="The question is becoming a short answer, a picture clue, and a tiny thing to try together."
         notes={[
           { label: 'Question', value: activeQuestion || 'Waiting for the next wonder.' },
-          { label: 'Local model path', value: 'Next.js calls Ollama on this laptop. The phone just hits the same app over your local network.' },
+          { label: 'Promise', value: 'Keep the wait calm, visual, and short enough for a child to stay with it.' },
         ]}
         checklist={[
           'Time to first visible loading state',
@@ -188,12 +188,12 @@ export default function Home() {
   if (story) {
     return (
       <DesktopStage
-        eyebrow="answer experience"
-        title="This is the part that has to earn repeat use."
-        description="A laptop reviewer should understand the fact quickly. A child on a phone should feel like they were told a warm little answer, not shown a wall of generated text."
+        eyebrow="answer"
+        title="A tiny answer that feels worth keeping."
+        description="The child gets the answer first, then a visual clue, a voice moment, and an optional story if the family wants more."
         notes={[
           { label: 'Question', value: story.question },
-          { label: 'Reveal mode', value: 'Storybook answer with narration, quick-truth framing, and a follow-up wonder.' },
+          { label: 'Reveal mode', value: 'Wonder Card: direct answer, visual clue, try-it prompt, optional story mode.' },
         ]}
         checklist={[
           'Is the core fact easy to spot before the full story?',
@@ -218,9 +218,6 @@ export default function Home() {
             >
               ←
             </button>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/55">
-              Story reveal
-            </p>
             <Link
               href="/journal"
               className="flex h-[38px] w-[38px] items-center justify-center rounded-[12px] bg-white/5 text-[var(--wj-ivory)]"
@@ -249,7 +246,6 @@ export default function Home() {
           <StoryCard
             title={story.title}
             story={story.story}
-            wonderQuestion={story.wonder_question}
             imageUrl={story.image_url}
             question={story.question}
             factAnswer={story.fact_answer}
@@ -265,7 +261,6 @@ export default function Home() {
               setError(null);
               setActiveQuestion('');
             }}
-            onFollowup={(nextQuestion) => handleAsk(nextQuestion)}
           />
         </div>
       </DesktopStage>
@@ -274,12 +269,12 @@ export default function Home() {
 
   return (
     <DesktopStage
-      eyebrow="desktop + mobile"
-      title="One local-first curiosity app. Two clean test surfaces."
-      description="The child still gets the immersive phone-style home. On desktop, you get space to review the product, verify the local LLM path, and inspect the output without losing the product mood."
+      eyebrow="ask"
+      title="Do not let a good question disappear."
+      description="Ask out loud, type quietly, or pick a starter wonder. The answer becomes something the family can revisit."
       notes={[
         { label: 'Current guide', value: profile.guide === 'nachi' ? 'Nachi · the spark' : 'Gargi · the listener' },
-        { label: 'Prompt style', value: 'Voice first for the child, typed fallback for the parent, and one saved journal behind the scenes.' },
+        { label: 'Shape', value: 'Voice first for the child, typed fallback for the parent, and a saved journal for later.' },
       ]}
       checklist={[
         'Laptop: does this feel intentional rather than like a blown-up phone screenshot?',
@@ -291,6 +286,7 @@ export default function Home() {
         <QuestionInput
           onSubmit={handleAsk}
           isLoading={isLoading}
+          error={error}
           profile={{
             childName: profile.childName,
             childAge: profile.childAge,
@@ -299,17 +295,6 @@ export default function Home() {
           }}
           sampleQuestions={SAMPLE_QUESTIONS}
         />
-
-        {error ? (
-          <div
-            className="mx-auto mt-4 max-w-[420px] rounded-[22px] bg-[#4c1f33]/80 px-5 py-4 text-center text-sm text-[#ffd9e2]"
-            style={{
-              boxShadow: 'inset 0 0 0 1px rgba(255,180,200,0.16)',
-            }}
-          >
-            {error}
-          </div>
-        ) : null}
       </div>
     </DesktopStage>
   );

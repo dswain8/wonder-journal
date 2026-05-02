@@ -22,6 +22,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const useDummyStories = process.env.USE_DUMMY_STORIES === 'true';
+const MAX_QUESTION_LENGTH = 220;
+
+function cleanText(value: string): string {
+  return value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+}
 
 async function generateAnswerWithRetry(
   question: string,
@@ -107,23 +112,33 @@ export async function POST(request: NextRequest) {
         save?: boolean;
       };
 
-    if (
-      !question ||
-      typeof question !== 'string' ||
-      question.trim().length === 0
-    ) {
+    if (!question || typeof question !== 'string') {
       return NextResponse.json(
         { error: 'Question is required' },
         { status: 400 },
       );
     }
 
-    const cleanQuestion = question.trim().replace(/<[^>]*>/g, '');
+    const cleanQuestion = cleanText(question);
+
+    if (cleanQuestion.length === 0) {
+      return NextResponse.json(
+        { error: 'Question is required' },
+        { status: 400 },
+      );
+    }
+
+    if (cleanQuestion.length > MAX_QUESTION_LENGTH) {
+      return NextResponse.json(
+        { error: 'Please ask one short question at a time.' },
+        { status: 400 },
+      );
+    }
+
+    const cleanedChildName =
+      typeof childName === 'string' ? cleanText(childName).slice(0, 24) : '';
     const profile: KidProfile = {
-      childName:
-        typeof childName === 'string' && childName.trim()
-          ? childName.trim().replace(/<[^>]*>/g, '')
-          : DEFAULT_KID_PROFILE.childName,
+      childName: cleanedChildName || DEFAULT_KID_PROFILE.childName,
       childAge:
         typeof childAge === 'number' && childAge >= 3 && childAge <= 8
           ? childAge
@@ -233,14 +248,14 @@ export async function POST(request: NextRequest) {
       error.message.includes('safety check')
     ) {
       return NextResponse.json(
-        { error: 'The story fairy needs another try! Please ask again.' },
+        { error: 'The answer needs another careful try. Please ask again.' },
         { status: 422 },
       );
     }
 
     if (error instanceof Error && error.message.includes('JSON parse')) {
       return NextResponse.json(
-        { error: 'The story got a bit jumbled. Please try again!' },
+        { error: 'The answer got a bit jumbled. Please try again!' },
         { status: 422 },
       );
     }

@@ -3,10 +3,19 @@ import path from 'path';
 import { IMAGE_LIBRARY } from './imageLibrary';
 import { ImageEntry } from './types';
 
+const imageExistsCache = new Map<string, boolean>();
+
 function imageExists(imagePath: string): boolean {
+  const cached = imageExistsCache.get(imagePath);
+  if (typeof cached === 'boolean') {
+    return cached;
+  }
+
   const relativePath = imagePath.replace(/^\/+/, '');
   const fullPath = path.join(process.cwd(), 'public', relativePath);
-  return fs.existsSync(fullPath);
+  const exists = fs.existsSync(fullPath);
+  imageExistsCache.set(imagePath, exists);
+  return exists;
 }
 
 export function matchImage(
@@ -36,7 +45,7 @@ export function matchImage(
       const normalizedTag = tag.toLowerCase();
       return words.some(
         (word) => normalizedTag.includes(word) || word.includes(normalizedTag),
-      );
+      ) || q.includes(normalizedTag);
     }).length;
 
     return { img, score };

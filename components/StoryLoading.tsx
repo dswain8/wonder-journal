@@ -93,7 +93,7 @@ export default function StoryLoading({
           </div>
 
           <p className="wj-caveat mt-12 text-[22px]" style={{ color: accent }}>
-            weaving your story…
+            finding the answer…
           </p>
           <p className="wj-display mt-3 max-w-[17rem] text-[22px] leading-[1.25] text-[var(--wj-ivory)]">
             &ldquo;{question || `What is ${childName} wondering?`}&rdquo;
@@ -105,7 +105,7 @@ export default function StoryLoading({
               {CLUE_FRAGMENTS[fragmentIndex]}
             </p>
             <p className="mt-3 max-w-[16rem] text-sm leading-6 text-[var(--wj-muted)]">
-              A short answer, a warm scene, and one more wonder are on the way.
+              A short answer, a picture clue, and a tiny try-it-together idea are on the way.
             </p>
           </div>
         </div>

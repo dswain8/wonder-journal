@@ -3,13 +3,16 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnswerSource, WonderGuideId } from '@/lib/types';
-import { StoryMoment, getSpecialStoryExperience } from '@/lib/storyExperiences';
+import {
+  StoryExperience,
+  StoryMoment,
+  getSpecialStoryExperience,
+} from '@/lib/storyExperiences';
 import { WONDER_GUIDES } from '@/lib/wonderGuides';
 
 interface StoryCardProps {
   title: string;
   story: string;
-  wonderQuestion: string;
   imageUrl: string | null;
   question: string;
   factAnswer?: string | null;
@@ -21,7 +24,6 @@ interface StoryCardProps {
   childName?: string;
   guide?: WonderGuideId;
   onAskAnother?: () => void;
-  onFollowup?: (question: string) => void;
 }
 
 const TOPIC_SCENES: Record<
@@ -231,30 +233,20 @@ function scoreVoicePersonaFit(
 }
 
 function buildNarrationScript({
-  guide,
-  title,
   story,
-  wonderQuestion,
   question,
   specialNarration,
 }: {
-  guide: WonderGuideId;
-  title: string;
   story: string;
-  wonderQuestion: string;
   question: string;
   specialNarration?: string;
 }) {
-  const narration = WONDER_GUIDES[guide].narration;
-
   if (specialNarration) {
-    return normalizeNarrationText(
-      `${narration.intro} ${specialNarration} ${narration.outro}`,
-    );
+    return normalizeNarrationText(specialNarration);
   }
 
   return normalizeNarrationText(
-    `${narration.intro} You asked, ${question}. Here comes a little story called ${title}. ${story} ${narration.outro} ${wonderQuestion}`,
+    `You asked, ${question}. Here is one way to see it. ${story}`,
   );
 }
 
@@ -395,22 +387,33 @@ function MomentGlyph({ glyph }: { glyph: StoryMoment['glyph'] }) {
   );
 }
 
-function SpecialStoryMoments({
-  fact,
-  moments,
-}: {
-  fact: string;
-  moments: StoryMoment[];
-}) {
-  return (
-    <section className="mt-5 rounded-[24px] bg-white/6 p-4 text-white shadow-[inset_0_0_0_1px_rgba(246,238,221,0.12)]">
-      <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/55">
-        The quick clues
-      </p>
-      <p className="mt-2 text-base font-semibold leading-7 text-[var(--wj-ivory)]">
-        {fact}
-      </p>
+const TRY_THIS_PROMPTS: Record<string, string> = {
+  animals: 'Look for one animal nearby or in a book. What is one clue its body gives you about how it lives?',
+  space: 'Tonight, look at one close thing and one faraway thing. Move your head slowly and see which one seems to move more.',
+  nature: 'Pick one leaf, flower, seed, or stone. Look closely and tell each other one tiny detail you did not notice before.',
+  body: 'Put a hand on your chest, then do ten little jumps. What changed?',
+  food: 'Smell one food before tasting it. Does your nose give your tongue a clue?',
+  weather: 'Look out of the window and name three sky clues: cloud, wind, light, or color.',
+  ocean: 'Fill a bowl with water and gently blow across it. Can you make tiny waves?',
+  transport: 'Roll a toy, a ball, or a pencil. What shape helps it move?',
+  colors: 'Hold something colorful near sunlight. Where do you see the brightest color?',
+  wonder: 'Pick one thing in the room and ask: what is it made of, and why is it shaped that way?',
+};
 
+function getTryThisPrompt(topic: string, specialExperience: StoryExperience | null): string {
+  if (specialExperience?.key === 'moon-car') {
+    return 'Next time you are in a car, look at a nearby pole and then the moon. The pole jumps away fast. The moon looks steady. That is the clue.';
+  }
+
+  return TRY_THIS_PROMPTS[topic] ?? TRY_THIS_PROMPTS.wonder;
+}
+
+function QuickClueCards({ moments }: { moments: StoryMoment[] }) {
+  return (
+    <section className="mt-4 rounded-[24px] bg-white/6 p-4 text-white shadow-[inset_0_0_0_1px_rgba(246,238,221,0.12)]">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/55">
+        Three clues
+      </p>
       <div className="mt-4 grid gap-3">
         {moments.map((moment) => (
           <div
@@ -429,6 +432,161 @@ function SpecialStoryMoments({
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function MoonMotionDemo({ moments }: { moments: StoryMoment[] }) {
+  const [mode, setMode] = useState<'near' | 'far' | 'both'>('both');
+  const modeCopy = {
+    near: {
+      title: 'Nearby things rush',
+      detail: 'Trees and lamp posts are close to the car, so they zip past the window.',
+    },
+    far: {
+      title: 'The moon stays steady',
+      detail: 'The moon is very far away, so your car barely changes how you see it.',
+    },
+    both: {
+      title: 'That is the moon trick',
+      detail: 'Close things race by. Far things look slow. So the moon feels like it is coming along.',
+    },
+  }[mode];
+
+  const treeDuration = mode === 'far' ? '6.8s' : '1.45s';
+  const moonAnimation = mode === 'near' ? 'wj-slow-drift 8s ease-in-out infinite' : 'wj-moon-glow 3.4s ease-in-out infinite';
+
+  return (
+    <section className="mt-4 rounded-[26px] bg-white/7 p-4 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.14)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/50">
+            See the trick
+          </p>
+          <h2 className="wj-display mt-1 text-[22px] leading-tight text-[var(--wj-ivory)]">
+            Near vs far
+          </h2>
+        </div>
+        <div className="flex rounded-full bg-black/18 p-1">
+          {[
+            ['near', 'Near'],
+            ['far', 'Far'],
+            ['both', 'Both'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value as 'near' | 'far' | 'both')}
+              aria-pressed={mode === value}
+              className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold transition ${
+                mode === value
+                  ? 'bg-[var(--wj-marigold)] text-[#351500]'
+                  : 'text-white/58'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative mt-4 h-[220px] overflow-hidden rounded-[22px] bg-[linear-gradient(180deg,#262f72_0%,#5b2a6b_58%,#8e4412_100%)]">
+        <div
+          className="absolute right-10 top-8 h-[72px] w-[72px] rounded-full bg-[radial-gradient(circle_at_35%_35%,#fff3d2,#f3c056_68%,#d88728_100%)]"
+          style={{ animation: moonAnimation }}
+        >
+          <div className="absolute left-4 top-4 h-2.5 w-2.5 rounded-full bg-[#a76028]/35" />
+          <div className="absolute bottom-5 right-4 h-3.5 w-3.5 rounded-full bg-[#a76028]/25" />
+        </div>
+
+        {[0, 1, 2, 3].map((index) => (
+          <div
+            key={index}
+            className="absolute bottom-[54px] h-24 w-16"
+            style={{
+              left: `${index * 28}%`,
+              animation: `wj-road-rush ${treeDuration} linear infinite`,
+              animationDelay: `${index * -0.42}s`,
+              opacity: mode === 'far' ? 0.45 : 0.95,
+            }}
+          >
+            <div className="absolute bottom-0 left-7 h-16 w-3 rounded-full bg-[#5b3218]" />
+            <div className="absolute left-1 top-0 h-14 w-14 rounded-full bg-[#78c873]" />
+            <div className="absolute left-8 top-8 h-10 w-10 rounded-full bg-[#a6e58c]" />
+          </div>
+        ))}
+
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-[#17122b]/80" />
+        <div className="absolute bottom-8 left-0 right-0 h-1 bg-[#f6eedd]/22" />
+        <div className="absolute bottom-8 left-1/2 h-1 w-16 rounded-full bg-[#f6eedd]/70" />
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
+          <svg width="96" height="52" viewBox="0 0 96 52" fill="none">
+            <rect x="12" y="24" width="72" height="18" rx="6" fill="#E19424" />
+            <path d="M26 24 L 36 10 H 62 L 74 24 Z" fill="#F3C056" />
+            <rect x="38" y="13" width="13" height="10" rx="2" fill="#5BC9C2" opacity="0.85" />
+            <rect x="55" y="13" width="13" height="10" rx="2" fill="#5BC9C2" opacity="0.85" />
+            <circle cx="28" cy="43" r="7" fill="#100d22" />
+            <circle cx="70" cy="43" r="7" fill="#100d22" />
+            <circle cx="28" cy="43" r="3" fill="#F6EEDD" />
+            <circle cx="70" cy="43" r="3" fill="#F6EEDD" />
+          </svg>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-[18px] bg-black/16 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.1)]">
+        <p className="text-sm font-extrabold text-[var(--wj-ivory)]">{modeCopy.title}</p>
+        <p className="mt-1 text-sm leading-6 text-white/68">{modeCopy.detail}</p>
+      </div>
+
+      <QuickClueCards moments={moments} />
+    </section>
+  );
+}
+
+function PictureCluePanel({
+  imageUrl,
+  title,
+  topic,
+  childName,
+  sceneTags,
+}: {
+  imageUrl: string | null;
+  title: string;
+  topic: string;
+  childName?: string;
+  sceneTags?: string[] | null;
+}) {
+  return (
+    <section className="mt-4">
+      <div>
+        {imageUrl ? (
+          <div className="relative h-[248px] overflow-hidden rounded-[30px] shadow-[0_18px_36px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.1)]">
+            <Image
+              src={imageUrl}
+              alt={title}
+              fill
+              unoptimized={imageUrl.endsWith('.svg')}
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 420px"
+            />
+          </div>
+        ) : (
+          <TopicScene topic={topic} childName={childName} sceneTags={sceneTags} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function TryTogetherCard({ prompt }: { prompt: string }) {
+  return (
+    <section className="mt-4 rounded-[24px] bg-[#fff4d8] px-5 py-5 text-[var(--wj-ink)] shadow-[0_14px_28px_rgba(0,0,0,0.22),inset_0_0_0_1px_rgba(142,68,18,0.1)]">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--wj-terracotta)]">
+        Try this together
+      </p>
+      <p className="mt-2 text-[15px] font-bold leading-7 text-[var(--wj-ink-soft)]">
+        {prompt}
+      </p>
     </section>
   );
 }
@@ -531,32 +689,195 @@ function MoonCarScene({
 function TopicScene({
   topic,
   childName,
+  sceneTags,
 }: {
   topic: string;
   childName?: string;
+  sceneTags?: string[] | null;
 }) {
   const scene = TOPIC_SCENES[topic] ?? TOPIC_SCENES.wonder;
+  const tags = buildVisualTags(topic, sceneTags);
 
   return (
     <div
-      className="relative h-[220px] overflow-hidden rounded-[26px] shadow-[0_18px_36px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)]"
+      className="relative h-[240px] overflow-hidden rounded-[26px] shadow-[0_18px_36px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)]"
       style={{ background: scene.gradient }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),transparent_32%)]" />
       <div className="absolute left-4 top-4 rounded-full bg-black/30 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-white/88 backdrop-blur-sm">
         {scene.label}
       </div>
-      <div
-        className="absolute right-6 top-6 h-3 w-3 rounded-full"
-        style={{ backgroundColor: scene.accent }}
-      />
+      <div className="absolute right-5 top-5 flex max-w-[11rem] flex-wrap justify-end gap-1.5">
+        {tags.slice(0, 3).map((tag) => (
+          <span
+            key={tag}
+            className="rounded-full bg-black/24 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/72 backdrop-blur-sm"
+          >
+            {tag.replace(/-/g, ' ')}
+          </span>
+        ))}
+      </div>
       <div className="absolute bottom-0 left-0 right-0 h-20" style={{ backgroundColor: scene.foreground, opacity: 0.82 }} />
       <div className="absolute bottom-6 left-6 rounded-full bg-white/12 px-4 py-2 text-sm font-semibold text-white/92 backdrop-blur-sm">
         {childName ? `${childName}'s answer adventure` : 'Answer adventure'}
       </div>
-      <div className="absolute left-10 top-16 h-20 w-20 rounded-full bg-white/12 blur-sm" />
-      <div className="absolute right-16 top-20 h-14 w-14 rounded-full border border-white/14" />
+      <div className="absolute left-8 top-14 h-24 w-24 rounded-full bg-white/10 blur-sm" />
       <div className="absolute bottom-10 right-10 h-12 w-28 rounded-full bg-white/8 blur-xl" />
+
+      <div className="absolute left-8 top-20 flex items-end gap-4">
+        {tags.slice(0, 4).map((tag, index) => (
+          <SceneGlyph
+            key={`${tag}-${index}`}
+            tag={tag}
+            accent={scene.accent}
+            index={index}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function buildVisualTags(topic: string, sceneTags?: string[] | null): string[] {
+  const defaults: Record<string, string[]> = {
+    animals: ['animal', 'tree', 'sun'],
+    space: ['moon', 'stars', 'rocket'],
+    nature: ['tree', 'leaf', 'sun'],
+    body: ['heart', 'spark', 'body'],
+    food: ['bowl', 'steam', 'sun'],
+    weather: ['cloud', 'rain', 'sun'],
+    ocean: ['wave', 'fish', 'shell'],
+    transport: ['car', 'road', 'wheel'],
+    colors: ['rainbow', 'paint', 'light'],
+    wonder: ['lamp', 'spark', 'book'],
+  };
+  const normalizedTags = (sceneTags ?? [])
+    .map((tag) => tag.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-'))
+    .filter((tag) => tag.length > 1);
+
+  return Array.from(new Set([...normalizedTags, ...(defaults[topic] ?? defaults.wonder)])).slice(0, 6);
+}
+
+function SceneGlyph({
+  tag,
+  accent,
+  index,
+}: {
+  tag: string;
+  accent: string;
+  index: number;
+}) {
+  const normalized = tag.toLowerCase();
+  const offset = index % 2 === 0 ? 'translateY(0)' : 'translateY(18px)';
+
+  if (normalized.includes('moon')) {
+    return (
+      <div className="relative h-16 w-16" style={{ transform: offset }}>
+        <div className="absolute inset-0 rounded-full bg-[#ffe39a] shadow-[0_0_28px_rgba(255,227,154,0.54)]" />
+        <div className="absolute right-1 top-1 h-12 w-12 rounded-full bg-[#5b2a6b]/55" />
+        <div className="absolute left-5 top-7 h-2 w-2 rounded-full bg-[#d8ad55]/65" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('star')) {
+    return (
+      <div className="relative h-16 w-16" style={{ transform: offset }}>
+        <div className="absolute left-5 top-3 h-8 w-8 rotate-45 rounded-[8px] bg-[#fff2bc] shadow-[0_0_22px_rgba(255,242,188,0.5)]" />
+        <div className="absolute left-5 top-3 h-8 w-8 rounded-[8px] bg-[#fff2bc]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('sun')) {
+    return (
+      <div className="relative h-16 w-16" style={{ transform: offset }}>
+        <div className="absolute inset-2 rounded-full bg-[#ffd36b] shadow-[0_0_30px_rgba(255,211,107,0.54)]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('cloud') || normalized.includes('rain')) {
+    return (
+      <div className="relative h-16 w-20" style={{ transform: offset }}>
+        <div className="absolute bottom-5 left-2 h-8 w-14 rounded-full bg-white/82" />
+        <div className="absolute bottom-7 left-5 h-9 w-9 rounded-full bg-white/90" />
+        <div className="absolute bottom-7 left-10 h-7 w-7 rounded-full bg-white/76" />
+        <div className="absolute bottom-1 left-4 h-4 w-1 rotate-12 rounded-full bg-[#92d8ff]" />
+        <div className="absolute bottom-0 left-9 h-4 w-1 rotate-12 rounded-full bg-[#92d8ff]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('rainbow') || normalized.includes('color')) {
+    return (
+      <div className="relative h-16 w-20" style={{ transform: offset }}>
+        <div className="absolute bottom-2 left-1 h-12 w-[4.5rem] rounded-t-full border-[9px] border-b-0 border-[#ff7777]" />
+        <div className="absolute bottom-2 left-3 h-9 w-14 rounded-t-full border-[8px] border-b-0 border-[#ffd36b]" />
+        <div className="absolute bottom-2 left-5 h-6 w-10 rounded-t-full border-[7px] border-b-0 border-[#5bc9c2]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('tree') || normalized.includes('leaf') || normalized.includes('flower')) {
+    return (
+      <div className="relative h-16 w-16" style={{ transform: offset }}>
+        <div className="absolute bottom-1 left-7 h-10 w-3 rounded-full bg-[#70431f]" />
+        <div className="absolute left-2 top-1 h-10 w-10 rounded-full bg-[#8bd475]" />
+        <div className="absolute right-2 top-5 h-8 w-8 rounded-full bg-[#b5e983]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('car') || normalized.includes('train') || normalized.includes('wheel') || normalized.includes('road')) {
+    return (
+      <div className="relative h-16 w-24" style={{ transform: offset }}>
+        <div className="absolute bottom-5 left-2 h-8 w-16 rounded-[14px] bg-[#f3c056]" />
+        <div className="absolute bottom-10 left-7 h-5 w-8 rounded-t-[12px] bg-[#fff2bc]" />
+        <div className="absolute bottom-3 left-5 h-4 w-4 rounded-full bg-[#17122b]" />
+        <div className="absolute bottom-3 left-14 h-4 w-4 rounded-full bg-[#17122b]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('wave') || normalized.includes('fish') || normalized.includes('ocean') || normalized.includes('water')) {
+    return (
+      <div className="relative h-16 w-20" style={{ transform: offset }}>
+        <div className="absolute bottom-3 left-0 h-8 w-20 rounded-full bg-[#67d7df]/82" />
+        <div className="absolute bottom-8 left-7 h-5 w-9 rounded-full bg-[#fff2bc]" />
+        <div className="absolute bottom-9 right-3 h-4 w-4 rotate-45 bg-[#fff2bc]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('heart') || normalized.includes('body') || normalized.includes('brain')) {
+    return (
+      <div className="relative h-16 w-16" style={{ transform: offset }}>
+        <div className="absolute left-3 top-3 h-10 w-10 rounded-full bg-[#ffd0cf]" />
+        <div className="absolute left-6 top-5 h-5 w-5 rounded-full bg-[#ff8a8a]" />
+        <div className="absolute left-4 top-5 h-5 w-5 rounded-full bg-[#ff8a8a]" />
+        <div className="absolute left-5 top-7 h-6 w-6 rotate-45 bg-[#ff8a8a]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('food') || normalized.includes('bowl') || normalized.includes('steam')) {
+    return (
+      <div className="relative h-16 w-16" style={{ transform: offset }}>
+        <div className="absolute bottom-3 left-2 h-7 w-12 rounded-b-full rounded-t-[8px] bg-[#fff2bc]" />
+        <div className="absolute bottom-8 left-6 h-6 w-1 rounded-full bg-white/58" />
+        <div className="absolute bottom-8 left-10 h-7 w-1 rounded-full bg-white/42" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-16 w-16" style={{ transform: offset }}>
+      <div
+        className="absolute inset-3 rotate-45 rounded-[14px] shadow-[0_0_26px_rgba(255,255,255,0.22)]"
+        style={{ backgroundColor: accent }}
+      />
+      <div className="absolute inset-6 rounded-full bg-[#fff2bc]" />
     </div>
   );
 }
@@ -564,19 +885,15 @@ function TopicScene({
 export default function StoryCard({
   title,
   story,
-  wonderQuestion,
   imageUrl,
   question,
   factAnswer,
   narrationText: generatedNarrationText,
   sceneTags,
-  source,
-  qualityScore,
   topic = 'wonder',
   childName,
   guide = 'gargi',
   onAskAnother,
-  onFollowup,
 }: StoryCardProps) {
   const [isNarrating, setIsNarrating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -584,6 +901,7 @@ export default function StoryCard({
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(0);
   const [selectedVoiceKey, setSelectedVoiceKey] = useState<string | null>(null);
   const [voicePanelOpen, setVoicePanelOpen] = useState(false);
+  const [showStory, setShowStory] = useState(false);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const accent = guide === 'nachi' ? '#F3C056' : '#5BC9C2';
@@ -594,24 +912,23 @@ export default function StoryCard({
   const specialExperience = useMemo(() => {
     return getSpecialStoryExperience(question, childName);
   }, [childName, question]);
+  const answerText =
+    specialExperience?.fact ??
+    factAnswer ??
+    `${childName || 'Your child'} asked a beautiful question. This answer needs one more careful look, but the wonder is saved.`;
+  const tryThisPrompt = getTryThisPrompt(topic, specialExperience);
 
   const narrationText = useMemo(() => {
     return buildNarrationScript({
-      guide,
-      title,
       story,
-      wonderQuestion,
       question,
       specialNarration: specialExperience?.narrationText ?? generatedNarrationText ?? undefined,
     });
   }, [
     generatedNarrationText,
-    guide,
     question,
     specialExperience,
     story,
-    title,
-    wonderQuestion,
   ]);
 
   const recommendedVoice = useMemo(() => {
@@ -688,6 +1005,10 @@ export default function StoryCard({
   }, [guide]);
 
   useEffect(() => {
+    setShowStory(false);
+  }, [question]);
+
+  useEffect(() => {
     if (!selectedVoiceKey || voices.length === 0) {
       return;
     }
@@ -754,8 +1075,8 @@ export default function StoryCard({
 
     const sampleText =
       guide === 'gargi'
-        ? 'Namaste, little wonderer. I am Gargi. Let us chase this question together.'
-        : 'Namaste, curious friend. I am Nachi. Let us turn this why into a tiny adventure.';
+        ? 'Let us look closely. The moon is very far away, so it seems to stay with us.'
+        : 'Let us follow the clues. Nearby trees rush past, but the faraway moon looks steady.';
     const utterance = new SpeechSynthesisUtterance(sampleText);
     applyNarrationVoice(utterance);
     utterance.onend = () => setIsNarrating(false);
@@ -835,42 +1156,35 @@ export default function StoryCard({
         <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(500px_400px_at_50%_0%,rgba(91,42,107,0.5),transparent_70%)]" />
 
         <div className="relative px-4 pb-6 pt-4">
-          <div className="text-center">
-            <p className="wj-caveat text-[18px]" style={{ color: accent }}>
-              a little story from {guideName}
-            </p>
-          </div>
-
-          <div className="mt-5">
+          <div className="mt-1">
             <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/50">
-              {childName || 'Someone'} asked
+              You asked
             </p>
             <h1 className="wj-display mt-2 text-[26px] leading-[1.2] text-[var(--wj-ivory)]">
               &ldquo;{question}&rdquo;
             </h1>
           </div>
 
-          <div className="mt-5">
-            {imageUrl ? (
-              <div className="relative h-[220px] overflow-hidden rounded-[26px] shadow-[0_18px_36px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)]">
-                <Image
-                  src={imageUrl}
-                  alt={title}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 420px"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-                <div className="absolute left-4 top-4 rounded-full bg-black/30 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-white/88 backdrop-blur-sm">
-                  Illustrated scene
-                </div>
-              </div>
-            ) : specialExperience ? (
-              <MoonCarScene label={specialExperience.sceneLabel} childName={childName} />
-            ) : (
-              <TopicScene topic={topic} childName={childName} />
-            )}
+          <div className="mt-4 rounded-[26px] bg-[#fff4d8] px-5 py-5 shadow-[0_18px_34px_rgba(0,0,0,0.22),inset_0_0_0_1px_rgba(142,68,18,0.1)]">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--wj-terracotta)]">
+              Short answer
+            </p>
+            <p className="wj-display mt-3 text-[20px] leading-[1.42] text-[var(--wj-ink)]">
+              {answerText}
+            </p>
           </div>
+
+          {specialExperience?.key === 'moon-car' ? (
+            <MoonMotionDemo moments={specialExperience.moments} />
+          ) : (
+            <PictureCluePanel
+              imageUrl={imageUrl}
+              title={title}
+              topic={topic}
+              childName={childName}
+              sceneTags={sceneTags}
+            />
+          )}
 
           <div className="mt-4 rounded-[22px] bg-white/6 p-4 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.14)]">
             <div className="flex items-center gap-3">
@@ -901,10 +1215,10 @@ export default function StoryCard({
 
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-[var(--wj-ivory)]">
-                  narrated by {guideName}
+                  Listen to the answer
                 </p>
                 <p className="mt-0.5 text-xs text-white/58">
-                  {narrationStyle.label}
+                  {guideName} reads it aloud
                 </p>
                 <div className="mt-2 h-1 rounded-full bg-white/10">
                   <div
@@ -939,9 +1253,9 @@ export default function StoryCard({
             </div>
 
             <div className="mt-4 rounded-[18px] bg-black/16 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.1)]">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/38">
-                {guideName} says
-              </p>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/38">
+                  Now playing
+                </p>
               <p
                 className="mt-1 text-[15px] font-semibold leading-6 transition-colors duration-200"
                 style={{ color: isNarrating ? accent : 'rgba(246,238,221,0.78)' }}
@@ -998,130 +1312,52 @@ export default function StoryCard({
             ) : null}
           </div>
 
-          <div className="wj-parchment wj-page-in mt-5 rounded-[26px] px-5 py-5">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--wj-terracotta)]">
-                The little truth
+          <TryTogetherCard prompt={tryThisPrompt} />
+
+          <div className="mt-5 overflow-hidden rounded-[26px] bg-white/6 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.14)]">
+            <button
+              type="button"
+              onClick={() => setShowStory((current) => !current)}
+              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+              aria-expanded={showStory}
+            >
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/45">
+                  Story mode
+                </p>
+                <p className="mt-1 text-sm font-bold text-[var(--wj-ivory)]">
+                  {showStory ? 'Hide the bedtime story' : 'Tell it like a bedtime story'}
+                </p>
+              </div>
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl font-bold text-[var(--wj-ivory)] transition"
+                style={{ transform: showStory ? 'rotate(45deg)' : 'rotate(0deg)' }}
+              >
+                +
               </span>
-              <div className="h-px flex-1 bg-black/10" />
-            </div>
+            </button>
 
-            <p className="wj-display mt-3 text-[17px] leading-[1.5] text-[var(--wj-ink)]">
-              {specialExperience?.fact ??
-                factAnswer ??
-                `${childName || 'Your child'} asked a beautiful question, so this answer was wrapped in a little story first and a clearer truth second.`}
-            </p>
-
-            {source || typeof qualityScore === 'number' || sceneTags?.length ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {source ? (
-                  <span
-                    className="rounded-full px-3 py-1.5 text-[11px] font-bold text-[var(--wj-terracotta)] shadow-[inset_0_0_0_1px_rgba(142,68,18,0.2)]"
-                    style={{ background: 'rgba(142,68,18,0.08)' }}
-                  >
-                    {source === 'benchmark'
-                      ? 'curated fact'
-                      : source === 'hybrid'
-                        ? 'curated + AI'
-                        : source === 'fallback'
-                          ? 'read together'
-                          : 'AI answer'}
-                  </span>
-                ) : null}
-                {typeof qualityScore === 'number' ? (
-                  <span
-                    className="rounded-full px-3 py-1.5 text-[11px] font-bold text-[var(--wj-terracotta)] shadow-[inset_0_0_0_1px_rgba(142,68,18,0.2)]"
-                    style={{ background: 'rgba(142,68,18,0.08)' }}
-                  >
-                    {Math.round(qualityScore * 100)}% quality check
-                  </span>
-                ) : null}
-                {sceneTags?.slice(0, 4).map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full px-3 py-1.5 text-[11px] font-bold text-[var(--wj-terracotta)] shadow-[inset_0_0_0_1px_rgba(142,68,18,0.2)]"
-                    style={{ background: 'rgba(142,68,18,0.08)' }}
-                  >
-                    {tag.replace(/-/g, ' ')}
-                  </span>
-                ))}
+            {showStory ? (
+              <div className="wj-parchment wj-page-in rounded-t-[26px] px-5 py-5">
+                <h2 className="wj-display text-[28px] leading-[1.12] text-[var(--wj-ink)]">
+                  {title}
+                </h2>
+                <div className="mt-4 whitespace-pre-line text-[15px] leading-[1.65] text-[var(--wj-ink-soft)]">
+                  {story}
+                </div>
               </div>
             ) : null}
-
-            <div className="mt-6 flex items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--wj-terracotta)]">
-                The story
-              </span>
-              <div className="h-px flex-1 bg-black/10" />
-            </div>
-
-            <h2 className="wj-display mt-3 text-[28px] leading-[1.12] text-[var(--wj-ink)]">
-              {title}
-            </h2>
-            <div className="mt-4 whitespace-pre-line text-[15px] leading-[1.65] text-[var(--wj-ink-soft)]">
-              {story}
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              {(specialExperience
-                ? ['why so far?', 'does the moon sleep?', 'other car-window wonders']
-                : ['tell me more', 'show another clue', 'keep wondering']
-              ).map((chip) => (
-                <span
-                  key={chip}
-                  className="rounded-full px-3 py-1.5 text-xs font-bold text-[var(--wj-terracotta)] shadow-[inset_0_0_0_1px_rgba(142,68,18,0.22)]"
-                  style={{ background: 'rgba(142,68,18,0.08)' }}
-                >
-                  {chip}
-                </span>
-              ))}
-            </div>
           </div>
 
-          {specialExperience ? (
-            <SpecialStoryMoments
-              fact={specialExperience.fact}
-              moments={specialExperience.moments}
-            />
+          {onAskAnother ? (
+            <button
+              type="button"
+              onClick={onAskAnother}
+              className="wj-primary-btn mt-5 w-full"
+            >
+              Ask another question
+            </button>
           ) : null}
-
-          <div
-            className="mt-5 overflow-hidden rounded-[26px] px-5 py-5 text-white shadow-[0_14px_30px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]"
-            style={{
-              background:
-                guide === 'nachi'
-                  ? 'linear-gradient(160deg, #8e4412 0%, #5b2a0b 100%)'
-                  : 'linear-gradient(160deg, #1f6b6b 0%, #0e3a3a 100%)',
-            }}
-          >
-            <p className="wj-caveat text-[22px] text-[#fff3d2]">I wonder…</p>
-            <p className="wj-display mt-2 text-[22px] leading-[1.25] text-[var(--wj-ivory)]">
-              {wonderQuestion}
-            </p>
-
-            {onFollowup || onAskAnother ? (
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                {onFollowup ? (
-                  <button
-                    type="button"
-                    onClick={() => onFollowup(wonderQuestion)}
-                    className="wj-primary-btn flex-1"
-                  >
-                    Ask this next
-                  </button>
-                ) : null}
-                {onAskAnother ? (
-                  <button
-                    type="button"
-                    onClick={onAskAnother}
-                    className="wj-ghost-btn flex-1"
-                  >
-                    Ask something else
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
         </div>
       </article>
     </section>

@@ -50,8 +50,8 @@ export default function StoryDetailPage() {
     return (
       <DesktopStage
         eyebrow="saved answer"
-        title="A journal detail should still feel like the product, not a database view."
-        description="This surface is where parents come back later, so it needs to hold up on a laptop and still feel intimate on a phone."
+        title="Opening a saved wonder."
+        description="A journal entry should feel calm, readable, and worth returning to later."
       >
         <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center">
           <div className="wj-screen flex min-h-[760px] items-center justify-center px-6 text-center">
@@ -72,7 +72,7 @@ export default function StoryDetailPage() {
       <DesktopStage
         eyebrow="saved answer"
         title="That story is missing."
-        description="The detail view needs to fail cleanly too, especially when someone opens an old saved link from desktop."
+        description="If an old link no longer works, the app should explain it gently and help the family return to the journal."
       >
         <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center">
           <div className="wj-screen flex min-h-[760px] flex-col items-center justify-center px-6 text-center">
@@ -92,8 +92,8 @@ export default function StoryDetailPage() {
   return (
     <DesktopStage
       eyebrow="saved answer"
-      title="The keepsake view has to hold up outside the live flow."
-      description="A parent may open this later from laptop or phone. It should still feel warm, understandable, and worth revisiting."
+      title="A saved wonder for later."
+      description="The answer should still scan well after the moment has passed."
       notes={[
         { label: 'Question', value: story.question },
         { label: 'Saved on', value: new Date(story.created_at).toLocaleString() },
@@ -124,7 +124,6 @@ export default function StoryDetailPage() {
         <StoryCard
           title={story.story_title}
           story={story.story_text}
-          wonderQuestion={story.wonder_question}
           imageUrl={story.image_path}
           question={story.question}
           factAnswer={story.fact_answer}

@@ -50,6 +50,7 @@ IMPORTANT:
 - The "topic" must be exactly one of: animals, space, nature, body, food, weather, ocean, transport, colors, wonder.
 - The "fact_answer" must be true even if the story is hidden.
 - The "narration_text" must be shorter and peppier than the story.
+- The "narration_text" must start with the question or the answer, not with "hello", "hey little one", or "I am".
 - The "wonder_question" must start with "I wonder".
 - The "scene_tags" must describe visible things an illustration could show.`;
 }
@@ -312,7 +313,7 @@ export function classifyTopicByKeywords(question: string): StoryTopic {
   };
 
   for (const [topic, keywords] of Object.entries(map)) {
-    if (keywords.some((kw) => q.includes(kw))) {
+    if (keywords.some((keyword) => keywordMatches(q, keyword))) {
       return VALID_TOPICS.includes(topic as StoryTopic)
         ? (topic as StoryTopic)
         : 'wonder';
@@ -320,4 +321,26 @@ export function classifyTopicByKeywords(question: string): StoryTopic {
   }
 
   return 'wonder';
+}
+
+function keywordMatches(question: string, keyword: string): boolean {
+  const trimmedKeyword = keyword.trim().toLowerCase();
+
+  if (!trimmedKeyword) {
+    return false;
+  }
+
+  const escapedKeyword = trimmedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  if (trimmedKeyword.includes(' ')) {
+    return new RegExp(`\\b${escapedKeyword.replace(/\s+/g, '\\s+')}\\b`, 'i').test(
+      question,
+    );
+  }
+
+  const pluralSuffix =
+    trimmedKeyword.endsWith('s') || trimmedKeyword.length <= 3 ? '' : 's?';
+  return new RegExp(`\\b${escapedKeyword}${pluralSuffix}\\b`, 'i').test(
+    question,
+  );
 }

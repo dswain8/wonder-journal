@@ -59,7 +59,7 @@ export function getSpecialStoryExperience(
     wonderQuestion: 'I wonder why the moon looks bigger when it is near the horizon?',
     topic: 'space',
     fact: 'The moon is so far away that it seems to stay with us while nearby things race past.',
-    narrationText: `Why does the moon follow our car? Ooh, it really can feel like the moon is riding beside us. But here is the moon trick. Close things go zip, zip, zip past the window. The moon is far, far away, so it barely shifts in the sky while the car moves. That is why it looks like the moon is coming along for the ride. I wonder why the moon looks bigger near the horizon?`,
+    narrationText: `Why does the moon follow our car? Ooh, it really can feel like the moon is riding beside us. But here is the moon trick. Close things go zip, zip, zip past the window. The moon is far, far away, so it barely shifts in the sky while the car moves. That is why it looks like the moon is coming along for the ride.`,
     sceneLabel: 'Featured moon demo',
     sceneTitle: 'A night drive, a bright moon, and three tiny clues',
     loadingMessages: [

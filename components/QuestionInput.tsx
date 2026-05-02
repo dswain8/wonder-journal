@@ -12,6 +12,7 @@ interface QuestionInputProps {
   isLoading: boolean;
   profile: KidProfile;
   sampleQuestions?: string[];
+  error?: string | null;
 }
 
 const AMBIENT_FIREFLIES = [
@@ -26,6 +27,7 @@ export default function QuestionInput({
   isLoading,
   profile,
   sampleQuestions = [],
+  error,
 }: QuestionInputProps) {
   const [question, setQuestion] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -283,6 +285,7 @@ export default function QuestionInput({
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
                     placeholder="Why does the moon follow our car?"
+                    maxLength={220}
                     disabled={isLoading}
                     className="min-h-14 rounded-[18px] border border-white/10 bg-white/8 px-4 text-[16px] text-[var(--wj-ivory)] outline-none placeholder:text-white/25"
                   />
@@ -291,9 +294,20 @@ export default function QuestionInput({
                     disabled={!question.trim() || isLoading}
                     className="wj-primary-btn w-full"
                   >
-                    Make a story
+                    Show answer
                   </button>
                 </div>
+              </div>
+            ) : null}
+
+            {error ? (
+              <div
+                className="mb-4 rounded-[20px] bg-[#4c1f33]/82 px-4 py-3 text-center text-sm font-semibold leading-5 text-[#ffd9e2]"
+                style={{
+                  boxShadow: 'inset 0 0 0 1px rgba(255,180,200,0.16)',
+                }}
+              >
+                {error}
               </div>
             ) : null}
 

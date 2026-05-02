@@ -84,6 +84,7 @@ export default function JournalList({ stories }: { stories: Story[] }) {
                   src={story.image_path}
                   alt={story.story_title}
                   fill
+                  unoptimized={story.image_path.endsWith('.svg')}
                   className="object-cover"
                   sizes="74px"
                 />

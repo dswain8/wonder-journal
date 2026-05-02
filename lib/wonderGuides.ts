@@ -47,10 +47,8 @@ export const WONDER_GUIDES: Record<WonderGuideId, WonderGuide> = {
       idleLine: 'Tap for Gargi’s story sparkle',
       playingLine: 'Gargi is telling the story',
       speedLabel: 'peppy',
-      intro:
-        'Ting. Hi, little wonderer. I am Gargi, and I brought a bright answer for you.',
-      outro:
-        'Pop that wonder in your pocket. Here is one more question to carry with you.',
+      intro: 'Let us look closely.',
+      outro: '',
       rate: 1.05,
       pitch: 1.16,
       preferredVoiceNames: [
@@ -100,10 +98,8 @@ export const WONDER_GUIDES: Record<WonderGuideId, WonderGuide> = {
       idleLine: 'Tap for Nachi’s lively read-aloud',
       playingLine: 'Nachi is telling the story',
       speedLabel: 'sunny',
-      intro:
-        'Ting. Hello, curious friend. It is Nachi, and I am ready to chase this why with you.',
-      outro:
-        'Now tuck this next wonder into your adventure pocket.',
+      intro: 'Let us follow the clues.',
+      outro: '',
       rate: 1.03,
       pitch: 1.06,
       preferredVoiceNames: [
