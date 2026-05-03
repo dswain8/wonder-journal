@@ -2,6 +2,17 @@
 
 Wonder Journal is a local-first curiosity journal for young kids. A parent or child asks a question, the app generates a factual child-friendly answer/story through a local Ollama model, and successful stories are saved to a local SQLite journal.
 
+![Wonder Journal answer screen](docs/assets/wonder-journal-preview.png)
+
+## What It Does
+
+- Answers the child’s curiosity first with a short, simple explanation.
+- Adds a visual clue or lightweight animation so the answer is easier to understand.
+- Reads the answer aloud slowly using the browser voice engine.
+- Offers a story answer when the child wants a more playful explanation.
+- Saves generated answers locally in a private SQLite journal.
+- Runs in dummy mode for UI testing or Ollama mode for local LLM generation.
+
 ## Quick Start
 
 ```bash
