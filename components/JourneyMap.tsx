@@ -37,7 +37,7 @@ export default function JourneyMap({ profile }: JourneyMapProps) {
       step: '05',
       lane: 'Parent',
       title: 'Save and revisit in the journal',
-      detail: `The story drops into the journal automatically so bedtime rereads and repeat questions feel easy.`,
+      detail: `The story drops into the journal automatically so rereads and repeat questions feel easy.`,
     },
   ];
 

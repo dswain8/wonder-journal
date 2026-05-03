@@ -40,8 +40,8 @@ export default function StoryLoading({
   }, []);
 
   return (
-    <section className="mx-auto min-h-[calc(100svh-2.5rem)] w-full max-w-[420px]">
-      <div className="wj-screen relative min-h-[760px] overflow-hidden">
+    <section className="mx-auto min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] lg:max-w-none">
+      <div className="wj-screen relative min-h-[760px] overflow-hidden lg:min-h-[680px] lg:max-w-none lg:rounded-[2.5rem]">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(500px_500px_at_50%_45%,rgba(91,42,107,0.42),transparent_60%)]" />
 
@@ -74,7 +74,7 @@ export default function StoryLoading({
           ))}
         </div>
 
-        <div className="relative flex min-h-[760px] flex-col items-center px-6 pb-10 pt-20 text-center">
+        <div className="relative flex min-h-[760px] flex-col items-center px-6 pb-10 pt-20 text-center lg:min-h-[680px] lg:px-12">
           <div className="relative">
             <div
               className="pointer-events-none absolute inset-[-1.8rem] rounded-full border-2 border-dashed"
@@ -105,7 +105,7 @@ export default function StoryLoading({
               {CLUE_FRAGMENTS[fragmentIndex]}
             </p>
             <p className="mt-3 max-w-[16rem] text-sm leading-6 text-[var(--wj-muted)]">
-              A short answer, a picture clue, and a tiny try-it-together idea are on the way.
+              Stay close. The answer is coming in simple words.
             </p>
           </div>
         </div>

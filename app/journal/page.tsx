@@ -36,8 +36,8 @@ export default function JournalPage() {
         title="Every saved answer becomes part of the product loop."
         description="The journal is the parent-facing memory surface. On desktop it should feel like a useful archive, not an afterthought."
       >
-        <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center">
-          <div className="wj-screen flex min-h-[760px] items-center justify-center px-6 text-center">
+        <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center lg:max-w-none">
+          <div className="wj-screen flex min-h-[760px] items-center justify-center px-6 text-center lg:min-h-[680px] lg:max-w-none lg:rounded-[2.5rem]">
             <div>
               <p className="wj-caveat text-[22px] text-[var(--wj-marigold)]">
                 gathering keepsakes…
@@ -67,8 +67,8 @@ export default function JournalPage() {
         'Does the journal stay clearly secondary to the child flow?',
       ]}
     >
-      <section className="mx-auto min-h-[calc(100svh-2.5rem)] w-full max-w-[420px]">
-        <div className="wj-screen min-h-[760px] overflow-hidden">
+      <section className="mx-auto min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] lg:max-w-none">
+        <div className="wj-screen min-h-[760px] overflow-hidden lg:min-h-[680px] lg:max-w-none lg:rounded-[2.5rem]">
           <div className="sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(26,21,54,0.92),rgba(26,21,54,0.76))] px-4 pb-4 pt-4 backdrop-blur-md">
             <div className="flex items-center justify-between">
               <Link

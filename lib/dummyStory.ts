@@ -260,14 +260,14 @@ export function generateDummyAnswer(
   const timeOfDay = pickItem(TIMES, seed + 5);
 
   const story = [
-    `One bright ${timeOfDay}, ${childName} asked, "${cleanQuestion}" A grown-up smiled and said the answer might be hiding inside a little adventure.`,
-    `In a make-believe adventure, ${childName} stepped into ${setting}. ${uppercaseFirst(
+    `One bright ${timeOfDay}, ${childName} asked, "${cleanQuestion}" The answer was ready to show itself with a tiny pop of wonder.`,
+    `${childName} stepped into ${setting}. ${uppercaseFirst(
       sensation,
     )}.`,
-    `Soon, ${childName} met ${companion}, who asked ${childName} to look slowly, listen carefully, and notice what each tiny clue was trying to say.`,
+    `Soon, ${childName} met ${companion}, who made a silly little sound and pointed to the first clue.`,
     `${answer}`,
-    `${childName} looked again and saw how one clue connected to the next. ${detail}`,
-    `The big question stopped feeling huge. It felt like a puzzle made of simple, true pieces that fit together once ${childName} paid attention.`,
+    `${childName} looked again and saw how the clue worked. ${detail}`,
+    `Now the big question felt smaller, brighter, and easier to hold. It was like a puzzle piece clicking into place: tik!`,
     `${childName} gave a happy little spin and said, "Wow!"`,
   ].join(' ');
 

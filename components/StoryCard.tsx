@@ -26,6 +26,8 @@ interface StoryCardProps {
   onAskAnother?: () => void;
 }
 
+type NarrationMode = 'answer' | 'story';
+
 const TOPIC_SCENES: Record<
   string,
   { label: string; gradient: string; accent: string; foreground: string }
@@ -94,6 +96,11 @@ const TOPIC_SCENES: Record<
 
 function normalizeNarrationText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
+}
+
+function estimateReadSeconds(text: string, rate: number, minimumSeconds: number): number {
+  const clearPaceCharsPerSecond = 9.5 * rate;
+  return Math.max(minimumSeconds, Math.round(text.length / clearPaceCharsPerSecond));
 }
 
 interface NarrationSentence {
@@ -235,19 +242,30 @@ function scoreVoicePersonaFit(
 function buildNarrationScript({
   story,
   question,
+  factAnswer,
   specialNarration,
 }: {
   story: string;
   question: string;
+  factAnswer?: string | null;
   specialNarration?: string;
 }) {
   if (specialNarration) {
     return normalizeNarrationText(specialNarration);
   }
 
+  if (factAnswer) {
+    return normalizeNarrationText(ensureSentenceEnding(factAnswer));
+  }
+
   return normalizeNarrationText(
     `You asked, ${question}. Here is one way to see it. ${story}`,
   );
+}
+
+function ensureSentenceEnding(value: string): string {
+  const trimmed = value.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
 function scoreGuideVoice(
@@ -490,7 +508,7 @@ function MoonMotionDemo({ moments }: { moments: StoryMoment[] }) {
         </div>
       </div>
 
-      <div className="relative mt-4 h-[220px] overflow-hidden rounded-[22px] bg-[linear-gradient(180deg,#262f72_0%,#5b2a6b_58%,#8e4412_100%)]">
+      <div className="relative mt-4 h-[220px] overflow-hidden rounded-[22px] bg-[linear-gradient(180deg,#262f72_0%,#5b2a6b_58%,#8e4412_100%)] lg:h-[300px]">
         <div
           className="absolute right-10 top-8 h-[72px] w-[72px] rounded-full bg-[radial-gradient(circle_at_35%_35%,#fff3d2,#f3c056_68%,#d88728_100%)]"
           style={{ animation: moonAnimation }}
@@ -560,7 +578,7 @@ function PictureCluePanel({
     <section className="mt-4">
       <div>
         {imageUrl ? (
-          <div className="relative h-[248px] overflow-hidden rounded-[30px] shadow-[0_18px_36px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.1)]">
+          <div className="relative h-[248px] overflow-hidden rounded-[30px] shadow-[0_18px_36px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.1)] lg:h-[360px]">
             <Image
               src={imageUrl}
               alt={title}
@@ -888,14 +906,14 @@ export default function StoryCard({
   imageUrl,
   question,
   factAnswer,
-  narrationText: generatedNarrationText,
   sceneTags,
   topic = 'wonder',
   childName,
   guide = 'gargi',
   onAskAnother,
 }: StoryCardProps) {
-  const [isNarrating, setIsNarrating] = useState(false);
+  const [activeNarration, setActiveNarration] = useState<NarrationMode | null>(null);
+  const [isNarrationPaused, setIsNarrationPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(0);
@@ -903,6 +921,7 @@ export default function StoryCard({
   const [voicePanelOpen, setVoicePanelOpen] = useState(false);
   const [showStory, setShowStory] = useState(false);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressStep = useRef(0);
 
   const accent = guide === 'nachi' ? '#F3C056' : '#5BC9C2';
   const guideMeta = WONDER_GUIDES[guide];
@@ -922,14 +941,19 @@ export default function StoryCard({
     return buildNarrationScript({
       story,
       question,
-      specialNarration: specialExperience?.narrationText ?? generatedNarrationText ?? undefined,
+      factAnswer: answerText,
+      specialNarration: specialExperience?.narrationText ?? undefined,
     });
   }, [
-    generatedNarrationText,
+    answerText,
     question,
     specialExperience,
     story,
   ]);
+
+  const storyNarrationText = useMemo(() => {
+    return normalizeNarrationText(`${title}. ${story}`);
+  }, [story, title]);
 
   const recommendedVoice = useMemo(() => {
     return pickGuideVoice(voices, guide);
@@ -962,6 +986,18 @@ export default function StoryCard({
   const narrationSentences = useMemo(() => {
     return splitNarrationSentences(narrationText);
   }, [narrationText]);
+
+  const storyNarrationSentences = useMemo(() => {
+    return splitNarrationSentences(storyNarrationText);
+  }, [storyNarrationText]);
+
+  const isAnswerNarrating = activeNarration === 'answer';
+  const isStoryNarrating = activeNarration === 'story';
+  const isAnswerPlaying = isAnswerNarrating && !isNarrationPaused;
+  const isStoryPlaying = isStoryNarrating && !isNarrationPaused;
+  const answerReadSeconds = estimateReadSeconds(narrationText, narrationStyle.rate, 8);
+  const storyReadRate = Math.max(0.72, narrationStyle.rate * 0.9);
+  const storyReadSeconds = estimateReadSeconds(storyNarrationText, storyReadRate, 24);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -1022,17 +1058,37 @@ export default function StoryCard({
     }
   }, [selectedVoiceKey, voices]);
 
-  const stopNarration = (resetProgress = true) => {
+  const clearProgressTimer = () => {
     if (progressTimer.current) {
       clearInterval(progressTimer.current);
       progressTimer.current = null;
     }
+  };
+
+  const startProgressTimer = (stepAmount = progressStep.current) => {
+    clearProgressTimer();
+    progressStep.current = stepAmount;
+
+    progressTimer.current = setInterval(() => {
+      setProgress((current) => {
+        if (current >= 98) {
+          return current;
+        }
+
+        return Math.min(98, current + stepAmount);
+      });
+    }, 120);
+  };
+
+  const stopNarration = (resetProgress = true) => {
+    clearProgressTimer();
 
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
 
-    setIsNarrating(false);
+    setActiveNarration(null);
+    setIsNarrationPaused(false);
 
     if (resetProgress) {
       setProgress(0);
@@ -1040,9 +1096,33 @@ export default function StoryCard({
     }
   };
 
-  const applyNarrationVoice = (utterance: SpeechSynthesisUtterance) => {
+  const pauseNarration = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      return;
+    }
+
+    window.speechSynthesis.pause();
+    clearProgressTimer();
+    setIsNarrationPaused(true);
+  };
+
+  const resumeNarration = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      return;
+    }
+
+    window.speechSynthesis.resume();
+    startProgressTimer();
+    setIsNarrationPaused(false);
+  };
+
+  const applyNarrationVoice = (
+    utterance: SpeechSynthesisUtterance,
+    mode: NarrationMode = 'answer',
+  ) => {
     utterance.lang = narrationVoice?.lang || 'en-IN';
-    utterance.rate = narrationStyle.rate;
+    utterance.rate =
+      mode === 'story' ? storyReadRate : narrationStyle.rate;
     utterance.pitch = narrationStyle.pitch;
 
     if (narrationVoice) {
@@ -1079,47 +1159,56 @@ export default function StoryCard({
         : 'Let us follow the clues. Nearby trees rush past, but the faraway moon looks steady.';
     const utterance = new SpeechSynthesisUtterance(sampleText);
     applyNarrationVoice(utterance);
-    utterance.onend = () => setIsNarrating(false);
-    utterance.onerror = () => setIsNarrating(false);
+    utterance.onend = () => {
+      setActiveNarration(null);
+      setIsNarrationPaused(false);
+    };
+    utterance.onerror = () => {
+      setActiveNarration(null);
+      setIsNarrationPaused(false);
+    };
 
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
-    setIsNarrating(true);
+    setActiveNarration('answer');
+    setIsNarrationPaused(false);
   };
 
-  const toggleNarration = () => {
+  const toggleReadAloud = (mode: NarrationMode) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       return;
     }
 
-    if (isNarrating) {
-      stopNarration(true);
+    if (activeNarration === mode) {
+      if (isNarrationPaused) {
+        resumeNarration();
+      } else {
+        pauseNarration();
+      }
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(narrationText);
-    applyNarrationVoice(utterance);
+    if (activeNarration) {
+      stopNarration(true);
+    }
+
+    const script = mode === 'story' ? storyNarrationText : narrationText;
+    const sentences = mode === 'story' ? storyNarrationSentences : narrationSentences;
+    const utterance = new SpeechSynthesisUtterance(script);
+    applyNarrationVoice(utterance, mode);
 
     const durationMs = Math.max(
+      (mode === 'story' ? storyReadSeconds : answerReadSeconds) * 1000,
       4200,
-      narrationText.length * (56 / narrationStyle.rate),
     );
-    const stepMs = 120;
-    const stepAmount = (stepMs / durationMs) * 100;
+    const stepAmount = (120 / durationMs) * 100;
 
     setProgress(0);
     setActiveSentenceIndex(0);
+    setIsNarrationPaused(false);
     playGuideChime(guide);
 
-    progressTimer.current = setInterval(() => {
-      setProgress((current) => {
-        if (current >= 98) {
-          return current;
-        }
-
-        return Math.min(98, current + stepAmount);
-      });
-    }, stepMs);
+    startProgressTimer(stepAmount);
 
     utterance.onboundary = (event) => {
       if (typeof event.charIndex !== 'number') {
@@ -1127,18 +1216,16 @@ export default function StoryCard({
       }
 
       setActiveSentenceIndex(
-        findNarrationSentenceIndex(narrationSentences, event.charIndex),
+        findNarrationSentenceIndex(sentences, event.charIndex),
       );
     };
 
     utterance.onend = () => {
-      if (progressTimer.current) {
-        clearInterval(progressTimer.current);
-        progressTimer.current = null;
-      }
+      clearProgressTimer();
       setProgress(100);
-      setActiveSentenceIndex(Math.max(0, narrationSentences.length - 1));
-      setIsNarrating(false);
+      setActiveSentenceIndex(Math.max(0, sentences.length - 1));
+      setActiveNarration(null);
+      setIsNarrationPaused(false);
     };
 
     utterance.onerror = () => {
@@ -1147,50 +1234,62 @@ export default function StoryCard({
 
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
-    setIsNarrating(true);
+    setActiveNarration(mode);
+    setIsNarrationPaused(false);
   };
 
   return (
-    <section className="mx-auto min-h-[calc(100svh-2.5rem)] w-full max-w-[420px]">
-      <article className="wj-screen relative min-h-[760px] overflow-hidden">
+    <section className="mx-auto min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] lg:max-w-none">
+      <article className="wj-screen relative min-h-[760px] overflow-hidden lg:min-h-[680px] lg:max-w-none lg:rounded-[2.5rem]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(500px_400px_at_50%_0%,rgba(91,42,107,0.5),transparent_70%)]" />
 
-        <div className="relative px-4 pb-6 pt-4">
-          <div className="mt-1">
+        <div className="relative px-4 pb-6 pt-4 lg:px-8 lg:pb-8 lg:pt-8">
+          <div className="mt-1 lg:max-w-[760px]">
             <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/50">
               You asked
             </p>
-            <h1 className="wj-display mt-2 text-[26px] leading-[1.2] text-[var(--wj-ivory)]">
+            <h1 className="wj-display mt-2 text-[26px] leading-[1.2] text-[var(--wj-ivory)] lg:text-[42px]">
               &ldquo;{question}&rdquo;
             </h1>
           </div>
 
-          <div className="mt-4 rounded-[26px] bg-[#fff4d8] px-5 py-5 shadow-[0_18px_34px_rgba(0,0,0,0.22),inset_0_0_0_1px_rgba(142,68,18,0.1)]">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--wj-terracotta)]">
-              Short answer
-            </p>
-            <p className="wj-display mt-3 text-[20px] leading-[1.42] text-[var(--wj-ink)]">
-              {answerText}
-            </p>
-          </div>
+          <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-start lg:gap-6">
+            <div className="min-w-0">
+              <div className="rounded-[26px] bg-[#fff4d8] px-5 py-5 shadow-[0_18px_34px_rgba(0,0,0,0.22),inset_0_0_0_1px_rgba(142,68,18,0.1)] lg:px-7 lg:py-7">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[var(--wj-terracotta)]">
+                  Short answer
+                </p>
+                <p className="wj-display mt-3 text-[20px] leading-[1.42] text-[var(--wj-ink)] lg:text-[27px]">
+                  {answerText}
+                </p>
+              </div>
 
-          {specialExperience?.key === 'moon-car' ? (
-            <MoonMotionDemo moments={specialExperience.moments} />
-          ) : (
-            <PictureCluePanel
-              imageUrl={imageUrl}
-              title={title}
-              topic={topic}
-              childName={childName}
-              sceneTags={sceneTags}
-            />
-          )}
+              {specialExperience?.key === 'moon-car' ? (
+                <MoonMotionDemo moments={specialExperience.moments} />
+              ) : (
+                <PictureCluePanel
+                  imageUrl={imageUrl}
+                  title={title}
+                  topic={topic}
+                  childName={childName}
+                  sceneTags={sceneTags}
+                />
+              )}
+            </div>
 
-          <div className="mt-4 rounded-[22px] bg-white/6 p-4 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.14)]">
+            <div className="min-w-0 lg:sticky lg:top-8">
+          <div className="mt-4 rounded-[22px] bg-white/6 p-4 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.14)] lg:mt-0">
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={toggleNarration}
+                onClick={() => toggleReadAloud('answer')}
+                aria-label={
+                  isAnswerPlaying
+                    ? 'Pause the answer'
+                    : isAnswerNarrating
+                      ? 'Resume the answer'
+                      : 'Listen to the answer'
+                }
                 className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full text-[var(--wj-ivory)]"
                 style={{
                   background:
@@ -1201,7 +1300,7 @@ export default function StoryCard({
                     '0 6px 14px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)',
                 }}
               >
-                {isNarrating ? (
+                {isAnswerPlaying ? (
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
                     <rect x="2" y="1" width="3.5" height="12" rx="1" />
                     <rect x="8.5" y="1" width="3.5" height="12" rx="1" />
@@ -1224,18 +1323,20 @@ export default function StoryCard({
                   <div
                     className="h-full rounded-full transition-[width] duration-150"
                     style={{
-                      width: `${progress}%`,
+                      width: `${isAnswerNarrating ? progress : 0}%`,
                       background: `linear-gradient(90deg, ${accent}, #F3C056)`,
                     }}
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between text-[11px] text-white/50">
                   <span>
-                    {isNarrating
+                    {isAnswerPlaying
                       ? narrationStyle.playingLine
-                      : narrationStyle.idleLine}
+                      : isAnswerNarrating
+                        ? 'Paused'
+                        : narrationStyle.idleLine}
                   </span>
-                  <span>{Math.max(32, Math.round(narrationText.length / 15))} sec</span>
+                  <span>{answerReadSeconds} sec</span>
                 </div>
               </div>
 
@@ -1258,10 +1359,11 @@ export default function StoryCard({
                 </p>
               <p
                 className="mt-1 text-[15px] font-semibold leading-6 transition-colors duration-200"
-                style={{ color: isNarrating ? accent : 'rgba(246,238,221,0.78)' }}
+                style={{ color: isAnswerNarrating ? accent : 'rgba(246,238,221,0.78)' }}
               >
-                {narrationSentences[activeSentenceIndex]?.text ??
-                  narrationStyle.idleLine}
+                {isAnswerNarrating
+                  ? narrationSentences[activeSentenceIndex]?.text ?? narrationStyle.idleLine
+                  : narrationStyle.idleLine}
               </p>
             </div>
 
@@ -1323,10 +1425,10 @@ export default function StoryCard({
             >
               <div>
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/45">
-                  Story mode
+                  Story answer
                 </p>
                 <p className="mt-1 text-sm font-bold text-[var(--wj-ivory)]">
-                  {showStory ? 'Hide the bedtime story' : 'Tell it like a bedtime story'}
+                  {showStory ? 'Hide the story answer' : 'Show the fun story answer'}
                 </p>
               </div>
               <span
@@ -1342,6 +1444,77 @@ export default function StoryCard({
                 <h2 className="wj-display text-[28px] leading-[1.12] text-[var(--wj-ink)]">
                   {title}
                 </h2>
+                <div className="mt-4 rounded-[20px] bg-[#fff7e3] p-3 shadow-[inset_0_0_0_1px_rgba(142,68,18,0.1)]">
+                  <button
+                    type="button"
+                    onClick={() => toggleReadAloud('story')}
+                    className="flex w-full items-center gap-3 text-left"
+                    aria-label={
+                      isStoryPlaying
+                        ? 'Pause the story answer'
+                        : isStoryNarrating
+                          ? 'Resume the story answer'
+                          : 'Read the story answer aloud'
+                    }
+                  >
+                    <span
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--wj-ivory)]"
+                      style={{
+                        background:
+                          guide === 'nachi'
+                            ? 'linear-gradient(180deg, #f3c056 0%, #8e4412 100%)'
+                            : 'linear-gradient(180deg, #5bc9c2 0%, #176060 100%)',
+                        boxShadow:
+                          '0 8px 16px rgba(64,31,15,0.18), inset 0 1px 0 rgba(255,255,255,0.35)',
+                      }}
+                    >
+                      {isStoryPlaying ? (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                          <rect x="2" y="1" width="3.5" height="12" rx="1" />
+                          <rect x="8.5" y="1" width="3.5" height="12" rx="1" />
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                          <path d="M3 1 L12 7 L3 13 Z" />
+                        </svg>
+                      )}
+                    </span>
+
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-extrabold text-[var(--wj-ink)]">
+                        {isStoryPlaying
+                          ? 'Reading the story answer'
+                          : isStoryNarrating
+                            ? 'Resume the story answer'
+                            : 'Read the story answer'}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-5 text-[var(--wj-ink-soft)]">
+                        {guideName} narrates the full answer with more colour
+                      </span>
+                    </span>
+
+                    <span className="shrink-0 text-[11px] font-bold text-[var(--wj-terracotta)]">
+                      {storyReadSeconds} sec
+                    </span>
+                  </button>
+
+                  <div className="mt-3 h-1 rounded-full bg-[#ead8b4]">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-150"
+                      style={{
+                        width: `${isStoryNarrating ? progress : 0}%`,
+                        background: `linear-gradient(90deg, ${accent}, #F3C056)`,
+                      }}
+                    />
+                  </div>
+
+                  {isStoryNarrating ? (
+                    <p className="mt-3 rounded-[14px] bg-white/60 px-3 py-2 text-sm font-semibold leading-6 text-[var(--wj-ink)]">
+                      {isStoryPlaying ? '' : 'Paused: '}
+                      {storyNarrationSentences[activeSentenceIndex]?.text ?? title}
+                    </p>
+                  ) : null}
+                </div>
                 <div className="mt-4 whitespace-pre-line text-[15px] leading-[1.65] text-[var(--wj-ink-soft)]">
                   {story}
                 </div>
@@ -1358,6 +1531,8 @@ export default function StoryCard({
               Ask another question
             </button>
           ) : null}
+            </div>
+          </div>
         </div>
       </article>
     </section>

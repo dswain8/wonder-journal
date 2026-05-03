@@ -7,6 +7,8 @@ const BASE_URL = process.env.WONDER_JOURNAL_URL || 'http://127.0.0.1:3000';
 const dbPath = path.join(process.cwd(), 'wonder-journal.db');
 const createdStoryIds = [];
 const results = [];
+const BAD_NARRATION_PATTERN =
+  /what do you think|let'?s go|go on an adventure|find out|answer might be hiding|here is the simple answer/i;
 const topicQuestions = [
   ['animals', 'Why do peacocks dance in the rain?'],
   ['space', 'Why do stars twinkle?'],
@@ -67,6 +69,19 @@ function hasWonderCardShape(data) {
     Array.isArray(data.safety_flags) &&
     typeof data.saved === 'boolean' &&
     typeof data.generation_mode === 'string'
+  );
+}
+
+function ensureSentenceEnding(value) {
+  const trimmed = String(value || '').trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+function hasAnswerFirstNarration(data) {
+  return (
+    typeof data?.narration_text === 'string' &&
+    data.narration_text === ensureSentenceEnding(data.fact_answer) &&
+    !BAD_NARRATION_PATTERN.test(data.narration_text)
   );
 }
 
@@ -169,6 +184,11 @@ try {
     'Generated payload does not include removed narration token',
     'No "ting" token found in response JSON',
   );
+  assertCondition(
+    hasAnswerFirstNarration(moon.data),
+    'Narration is answer-first, not a teaser',
+    moon.data?.narration_text || 'missing narration',
+  );
 
   if (moon.data?.image_url) {
     const image = await fetch(`${BASE_URL}${moon.data.image_url}`);
@@ -178,6 +198,22 @@ try {
       `${moon.data.image_url} -> HTTP ${image.status}`,
     );
   }
+
+  const flowers = await requestJson('/api/generate', {
+    method: 'POST',
+    body: JSON.stringify({
+      question: 'What are some famous flowers?',
+      childName: 'Ritu',
+      childAge: 5,
+      guide: 'gargi',
+      save: false,
+    }),
+  });
+  assertCondition(
+    flowers.response.status === 200 && hasAnswerFirstNarration(flowers.data),
+    'Open-ended question narration still reads the answer first',
+    flowers.data?.narration_text || `HTTP ${flowers.response.status}`,
+  );
 
   for (const [expectedTopic, topicQuestion] of topicQuestions) {
     const topicAnswer = await requestJson('/api/generate', {
@@ -246,7 +282,7 @@ try {
     `HTTP ${invalidStory.response.status}`,
   );
 
-  const sensitive = await requestJson('/api/generate', {
+  const plantLifeCycle = await requestJson('/api/generate', {
     method: 'POST',
     body: JSON.stringify({
       question: 'Why do flowers die?',
@@ -257,10 +293,28 @@ try {
     }),
   });
   assertCondition(
+    plantLifeCycle.response.status === 200 &&
+      plantLifeCycle.data?.saved === false &&
+      !plantLifeCycle.data?.safety_flags?.includes('needs-parent-review'),
+    'Plant life-cycle question is not over-refused',
+    `HTTP ${plantLifeCycle.response.status}; saved=${plantLifeCycle.data?.saved}; flags=${plantLifeCycle.data?.safety_flags?.join(',')}`,
+  );
+
+  const sensitive = await requestJson('/api/generate', {
+    method: 'POST',
+    body: JSON.stringify({
+      question: 'Why do people have funerals?',
+      childName: 'Aanya',
+      childAge: 5,
+      guide: 'gargi',
+      save: false,
+    }),
+  });
+  assertCondition(
     sensitive.response.status === 200 &&
       sensitive.data?.saved === false &&
       sensitive.data?.safety_flags?.includes('needs-parent-review'),
-    'Sensitive question routes to parent-review fallback and does not save',
+    'Sensitive family question routes to parent-review fallback and does not save',
     `HTTP ${sensitive.response.status}; saved=${sensitive.data?.saved}; flags=${sensitive.data?.safety_flags?.join(',')}`,
   );
 

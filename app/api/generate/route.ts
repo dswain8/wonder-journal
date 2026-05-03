@@ -228,16 +228,20 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     console.error('Generation error:', error);
+    const message = error instanceof Error ? error.message.toLowerCase() : '';
 
     if (
-      error instanceof Error &&
-      (error.message.includes('ECONNREFUSED') ||
-        error.message.includes('fetch failed'))
+      message.includes('econnrefused') ||
+      message.includes('fetch failed') ||
+      message.includes('timed out') ||
+      message.includes('timeout') ||
+      message.includes('aborted')
     ) {
       return NextResponse.json(
         {
-          error:
-            'Cannot connect to Ollama. Please make sure Ollama is running (ollama serve).',
+          error: message.includes('timed out') || message.includes('timeout')
+            ? 'Ollama is taking too long. Please try again or use a smaller local model.'
+            : 'Cannot connect to Ollama. Please make sure Ollama is running (ollama serve).',
         },
         { status: 503 },
       );

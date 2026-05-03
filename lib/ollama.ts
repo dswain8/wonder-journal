@@ -1,6 +1,7 @@
 const OLLAMA_BASE_URL =
   process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen3:4b';
+const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 20000);
 
 interface GenerateWithOllamaOptions {
   model?: string;
@@ -11,22 +12,33 @@ export async function generateWithOllama(
   system: string,
   options: GenerateWithOllamaOptions = {},
 ): Promise<string> {
-  const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    cache: 'no-store',
-    body: JSON.stringify({
-      model: options.model || OLLAMA_MODEL,
-      prompt,
-      system,
-      stream: false,
-      options: {
-        temperature: 0,
-        top_p: 1,
-        num_predict: 600,
-      },
-    }),
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
+      body: JSON.stringify({
+        model: options.model || OLLAMA_MODEL,
+        prompt,
+        system,
+        stream: false,
+        options: {
+          temperature: 0,
+          top_p: 1,
+          num_predict: 600,
+        },
+      }),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error(`Ollama request timed out after ${OLLAMA_TIMEOUT_MS}ms`);
+    }
+
+    throw error;
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -48,6 +60,7 @@ export async function fetchOllamaTags(): Promise<Array<{ name: string }>> {
   const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
     method: 'GET',
     cache: 'no-store',
+    signal: AbortSignal.timeout(5000),
   });
 
   if (!response.ok) {

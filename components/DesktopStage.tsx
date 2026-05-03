@@ -37,7 +37,48 @@ export default function DesktopStage({
   }, []);
 
   if (!reviewMode) {
-    return <div className="mx-auto w-full max-w-[460px]">{children}</div>;
+    return (
+      <div className="mx-auto w-full max-w-[1180px] lg:grid lg:min-h-[calc(100svh-3rem)] lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)] lg:items-center lg:gap-8 xl:gap-12">
+        <aside className="hidden lg:block">
+          <div className="sticky top-8">
+            <p className="wj-caveat text-[30px] text-[var(--wj-marigold)]">
+              {eyebrow}
+            </p>
+            <h1 className="wj-display mt-3 max-w-[12ch] text-[58px] leading-[0.96] text-[var(--wj-ivory)] xl:text-[68px]">
+              {title}
+            </h1>
+            <p className="mt-6 max-w-[34ch] text-[17px] leading-8 text-[var(--wj-muted)]">
+              {description}
+            </p>
+
+            {notes.length > 0 ? (
+              <div className="mt-8 space-y-3">
+                {notes.slice(0, 2).map((note) => (
+                  <div
+                    key={`${note.label}-${note.value}`}
+                    className="rounded-[24px] bg-white/5 px-5 py-4"
+                    style={{
+                      boxShadow: 'inset 0 0 0 1px rgba(246,238,221,0.12)',
+                    }}
+                  >
+                    <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/42">
+                      {note.label}
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-[var(--wj-ivory)]">
+                      {note.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </aside>
+
+        <div className="mx-auto w-full max-w-[460px] lg:max-w-none">
+          {children}
+        </div>
+      </div>
+    );
   }
 
   return (

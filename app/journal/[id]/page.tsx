@@ -53,8 +53,8 @@ export default function StoryDetailPage() {
         title="Opening a saved wonder."
         description="A journal entry should feel calm, readable, and worth returning to later."
       >
-        <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center">
-          <div className="wj-screen flex min-h-[760px] items-center justify-center px-6 text-center">
+        <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center lg:max-w-none">
+          <div className="wj-screen flex min-h-[760px] items-center justify-center px-6 text-center lg:min-h-[680px] lg:max-w-none lg:rounded-[2.5rem]">
             <div>
               <p className="wj-caveat text-[22px] text-[var(--wj-marigold)]">
                 opening the keepsake…
@@ -74,8 +74,8 @@ export default function StoryDetailPage() {
         title="That story is missing."
         description="If an old link no longer works, the app should explain it gently and help the family return to the journal."
       >
-        <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center">
-          <div className="wj-screen flex min-h-[760px] flex-col items-center justify-center px-6 text-center">
+        <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center lg:max-w-none">
+          <div className="wj-screen flex min-h-[760px] flex-col items-center justify-center px-6 text-center lg:min-h-[680px] lg:max-w-none lg:rounded-[2.5rem]">
             <p className="wj-caveat text-[22px] text-[var(--wj-marigold)]">
               this one slipped away
             </p>

@@ -75,8 +75,11 @@ export default function QuestionInput({
   };
 
   return (
-    <section className="mx-auto min-h-[calc(100svh-2.5rem)] w-full max-w-[420px]">
-      <form onSubmit={handleSubmit} className="wj-screen relative min-h-[760px]">
+    <section className="mx-auto min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] lg:max-w-none">
+      <form
+        onSubmit={handleSubmit}
+        className="wj-screen relative min-h-[760px] lg:min-h-[680px] lg:max-w-none lg:rounded-[2.5rem]"
+      >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div
             className="absolute left-1/2 top-[15.5rem] h-[21rem] w-[21rem] -translate-x-1/2 rounded-full"
@@ -101,7 +104,7 @@ export default function QuestionInput({
           ))}
         </div>
 
-        <div className="relative flex min-h-[760px] flex-col px-5 pb-6 pt-4">
+        <div className="relative flex min-h-[760px] flex-col px-5 pb-6 pt-4 lg:min-h-[680px] lg:px-8 lg:pb-8 lg:pt-7">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
@@ -148,21 +151,21 @@ export default function QuestionInput({
             </Link>
           </div>
 
-          <div className="mt-9 text-center">
+          <div className="mt-9 text-center lg:mt-10">
             <p
               className="wj-caveat text-[22px]"
               style={{ color: guideAccent }}
             >
               {profile.guide === 'nachi' ? 'Nachi is listening' : 'Gargi is listening'}
             </p>
-            <h1 className="wj-display mt-1 text-[30px] leading-[1.05] text-[var(--wj-ivory)]">
+            <h1 className="wj-display mt-1 text-[30px] leading-[1.05] text-[var(--wj-ivory)] lg:text-[44px]">
               What are you
               <br />
               wondering today?
             </h1>
           </div>
 
-          <div className="relative mt-4 flex justify-center">
+          <div className="relative mt-4 flex justify-center lg:mt-6">
             <WonderGuideAvatar
               guide={profile.guide}
               size="lg"
@@ -212,7 +215,7 @@ export default function QuestionInput({
             </p>
           </div>
 
-          <div className="mt-auto">
+          <div className="mt-auto lg:mx-auto lg:w-full lg:max-w-[620px]">
             {isListening ? (
               <div className="mb-5 flex h-[72px] items-center justify-center gap-[3px]">
                 {Array.from({ length: 24 }, (_, index) => (

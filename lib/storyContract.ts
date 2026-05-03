@@ -98,6 +98,15 @@ function normalizeSource(value: unknown, fallback: AnswerSource): AnswerSource {
     : fallback;
 }
 
+function ensureSentenceEnding(value: string): string {
+  const trimmed = value.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+function normalizeAnswerNarration(factAnswer: string): string {
+  return ensureSentenceEnding(factAnswer);
+}
+
 function assertLength(
   label: string,
   value: string,
@@ -206,11 +215,6 @@ export function validateGeneratedAnswerV1(
   const storyTitle =
     getString(value, 'story_title') ?? getString(value, 'title');
   const storyText = getString(value, 'story_text') ?? getString(value, 'story');
-  const narrationText =
-    getString(value, 'narration_text') ??
-    (factAnswer && storyTitle
-      ? `${factAnswer} Here is the story called ${storyTitle}.`
-      : null);
   const wonderQuestion = getString(value, 'wonder_question');
   const benchmarkId = getString(value, 'benchmark_id');
 
@@ -226,19 +230,17 @@ export function validateGeneratedAnswerV1(
     throw new Error('Missing required field: story_text');
   }
 
-  if (!narrationText) {
-    throw new Error('Missing required field: narration_text');
-  }
-
   if (!wonderQuestion) {
     throw new Error('Missing required field: wonder_question');
   }
+
+  const narrationText = normalizeAnswerNarration(factAnswer);
 
   assertLength('question', question, 3, 200);
   assertLength('fact_answer', factAnswer, 20, 220);
   assertLength('story_title', storyTitle, 4, 80);
   assertLength('story_text', storyText, 120, 1600);
-  assertLength('narration_text', narrationText, 30, 500);
+  assertLength('narration_text', narrationText, 20, 500);
   assertLength('wonder_question', wonderQuestion, 12, 140);
 
   return {

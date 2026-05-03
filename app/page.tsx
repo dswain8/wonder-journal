@@ -165,7 +165,7 @@ export default function Home() {
       <DesktopStage
         eyebrow="answer coming"
         title="A little wonder is taking shape."
-        description="The question is becoming a short answer, a picture clue, and a tiny thing to try together."
+        description="The app is looking for a simple, warm answer that a child can understand."
         notes={[
           { label: 'Question', value: activeQuestion || 'Waiting for the next wonder.' },
           { label: 'Promise', value: 'Keep the wait calm, visual, and short enough for a child to stay with it.' },
@@ -193,7 +193,7 @@ export default function Home() {
         description="The child gets the answer first, then a visual clue, a voice moment, and an optional story if the family wants more."
         notes={[
           { label: 'Question', value: story.question },
-          { label: 'Reveal mode', value: 'Wonder Card: direct answer, visual clue, try-it prompt, optional story mode.' },
+          { label: 'Reveal mode', value: 'Answer first, then a visual moment, narration, and optional story mode.' },
         ]}
         checklist={[
           'Is the core fact easy to spot before the full story?',

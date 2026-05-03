@@ -5,6 +5,7 @@ import process from 'node:process';
 const BASE_URL = process.env.WONDER_JOURNAL_URL || 'http://127.0.0.1:3000';
 const BENCHMARK_PATH = path.join(process.cwd(), 'lib', 'benchmarkQuestions.json');
 const REPORT_DIR = path.join(process.cwd(), 'reports', 'contract-evals');
+const requireLive = process.argv.includes('--require-live');
 
 function parseEnvLocal() {
   const envPath = path.join(process.cwd(), '.env.local');
@@ -126,6 +127,8 @@ async function evaluateQuestion(item) {
   const topicOk = data.topic === item.expectedTopic;
   const sourceOk = data.source === 'benchmark' || data.source === 'hybrid';
   const fallbackUsed = data.generation_mode === 'fallback';
+  const liveModeOk = !requireLive || data.generation_mode === 'ollama';
+  const noFallbackSource = data.source !== 'fallback';
   const sceneTagHits = countSceneTagHits(data.scene_tags, item.sceneTags);
   const wonderOk = /^I wonder\b/.test(data.wonder_question);
   const savedOk = data.saved === false && data.id === 0;
@@ -133,10 +136,20 @@ async function evaluateQuestion(item) {
   return {
     id: item.id,
     question: item.question,
-    ok: contractOk && topicOk && sourceOk && !fallbackUsed && wonderOk && savedOk,
+    ok:
+      contractOk &&
+      topicOk &&
+      sourceOk &&
+      !fallbackUsed &&
+      liveModeOk &&
+      noFallbackSource &&
+      wonderOk &&
+      savedOk,
     contractOk,
     topicOk,
     sourceOk,
+    liveModeOk,
+    noFallbackSource,
     wonderOk,
     savedOk,
     fallbackUsed,
@@ -171,6 +184,7 @@ const report = {
   generated_at: new Date().toISOString(),
   base_url: BASE_URL,
   use_dummy_stories: env.USE_DUMMY_STORIES === 'true',
+  require_live: requireLive,
   ollama_base_url: env.OLLAMA_BASE_URL || null,
   ollama_model: env.OLLAMA_MODEL || null,
   benchmark_count: selectedBenchmarks.length,
@@ -222,6 +236,8 @@ if (failures.length > 0) {
         contractOk: failure.contractOk,
         topicOk: failure.topicOk,
         sourceOk: failure.sourceOk,
+        liveModeOk: failure.liveModeOk,
+        noFallbackSource: failure.noFallbackSource,
         wonderOk: failure.wonderOk,
         savedOk: failure.savedOk,
         fallbackUsed: failure.fallbackUsed,

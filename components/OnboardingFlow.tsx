@@ -80,7 +80,7 @@ export default function OnboardingFlow({
 
   return (
     <section className="mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[420px] items-center">
-      <div className="wj-screen relative min-h-[760px]">
+      <div className="wj-screen relative min-h-[760px] lg:min-h-[680px] lg:max-w-none lg:rounded-[2.5rem]">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(600px_400px_at_50%_0%,rgba(232,164,60,0.14),transparent_60%),radial-gradient(500px_400px_at_50%_100%,rgba(91,42,107,0.45),transparent_60%)]" />
           <div className="absolute right-[-1.75rem] top-14 h-32 w-32 rounded-full bg-[radial-gradient(circle_at_35%_35%,#ffe9b8,#e8b77a_70%,transparent_72%)] opacity-65 shadow-[0_0_80px_rgba(255,233,184,0.22)]" />
