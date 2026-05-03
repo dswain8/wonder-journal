@@ -1,264 +1,236 @@
 # Wonder Journal Ollama V1 Contract
 
-This document describes how Wonder Journal should evolve from the current simple story JSON to a product-ready structured answer contract.
+This document describes the structured answer contract used between Wonder Journal and the local Ollama model.
 
-Related schema:
+Related implementation files:
 
-- [generated-answer-v1.schema.json](</Users/dswain/Documents/New project/wonder-journal/lib/schemas/generated-answer-v1.schema.json>)
+- [generated-answer-v1.schema.json](../lib/schemas/generated-answer-v1.schema.json)
+- [storyContract.ts](../lib/storyContract.ts)
+- [generateStory.ts](../lib/generateStory.ts)
+- [ollama.ts](../lib/ollama.ts)
 
-## 1. Why We Need A Stricter Contract
+## 1. Why The Contract Exists
 
-The current generation shape is close to:
+Wonder Journal should not treat the model response as one loose blob of prose.
+
+The app needs separate pieces so the UI can answer the child clearly:
+
+- a short factual answer
+- a story answer
+- read-aloud narration
+- visual scene tags
+- safety and provenance metadata
+- journal persistence fields
+
+The contract makes the model output predictable enough for the product to render, validate, test, and save.
+
+## 2. Current Runtime Decision
+
+The app does **not** send Ollama a `format` field today.
+
+That is intentional.
+
+For the current local setup with `qwen3:4b`, the most reliable path is:
+
+1. Prompt the model to return only JSON.
+2. Keep generation deterministic with `temperature: 0` and `top_p: 1`.
+3. Parse strict JSON first.
+4. If the model wraps JSON in extra text, recover the first balanced `{ ... }` object.
+5. Validate and normalize the object locally before rendering or saving.
+
+The request body in [ollama.ts](../lib/ollama.ts) should stay shaped like this:
 
 ```json
 {
-  "title": "short fun title",
-  "story": "story text",
-  "wonder_question": "I wonder ...",
-  "topic": "space"
+  "model": "qwen3:4b",
+  "prompt": "...",
+  "system": "...",
+  "stream": false,
+  "options": {
+    "temperature": 0,
+    "top_p": 1,
+    "num_predict": 600
+  }
 }
 ```
 
-That is good enough for a prototype, but not good enough for a product.
-
-It has three major weaknesses:
-
-- no short factual answer
-- no dedicated narration field
-- no scene metadata for reusable visual matching
-
-In a real product, the LLM should not decide the entire experience in one blob of prose.
-It should return structured parts that the app can validate and render.
-
-## 2. V1 Contract Goal
-
-The model should produce one answer object with:
-
-- a truth anchor
-- a child-friendly story wrapper
-- a shorter narration layer
-- a follow-up curiosity prompt
-- reusable scene tags
-- a confidence signal
+Do not add `format` back unless we explicitly test that the chosen local model and Ollama version handle it reliably.
 
 ## 3. Target Schema
 
-The target contract is defined in:
+The target contract is defined in [generated-answer-v1.schema.json](../lib/schemas/generated-answer-v1.schema.json).
 
-- [generated-answer-v1.schema.json](</Users/dswain/Documents/New project/wonder-journal/lib/schemas/generated-answer-v1.schema.json>)
+The model should return one object with these fields:
 
-### Fields
+- `question`: the original child question
+- `benchmark_id`: optional ID like `BQ-01` when the question maps to a curated benchmark
+- `topic`: one of the Wonder Journal topic buckets
+- `fact_answer`: the shortest trustworthy explanation
+- `story_title`: title for the story surface
+- `story_text`: the story-led answer
+- `narration_text`: model-provided narration text, currently normalized by the server
+- `wonder_question`: a follow-up prompt that starts with `I wonder`
+- `scene_tags`: reusable visual tags
+- `safety_flags`: quality or trust alerts
+- `confidence`: model-reported confidence, treated only as a hint
+- `source`: server-stamped provenance: `benchmark`, `hybrid`, `model`, or `fallback`
 
-- `question`
-  - the original child question
-- `benchmark_id`
-  - optional ID like `BQ-01` when the question maps to a known benchmark
-- `topic`
-  - one of the Wonder Journal topic buckets
-- `fact_answer`
-  - the shortest trustworthy explanation
-- `story_title`
-  - title for the story surface
-- `story_text`
-  - the story-led answer
-- `narration_text`
-  - a shorter read-aloud version
-- `wonder_question`
-  - a follow-up that starts with `I wonder`
-- `scene_tags`
-  - reusable visual tags
-- `safety_flags`
-  - quality or trust alerts
-- `confidence`
-  - model confidence between 0 and 1
-- `source`
-  - server-stamped provenance: `benchmark`, `hybrid`, `model`, or `fallback`
-
-## 4. Product Rules For Each Field
-
-### `fact_answer`
-
-This is the most important field.
-
-Rules:
-
-- must be factual
-- must be shorter than the story
-- should usually fit in 1-2 spoken sentences
-- should survive if the story is hidden
-
-### `story_text`
-
-Rules:
-
-- should support the fact, not replace it
-- should stay short enough for ages 3-6
-- should use sensory language carefully
-- should never become more magical than truthful
-
-### `narration_text`
-
-Rules:
-
-- should be easier to listen to than `story_text`
-- should be shorter and more direct
-- should sound natural when read aloud
-
-### `wonder_question`
-
-Rules:
-
-- must keep the topic open
-- must not change topics abruptly
-- must feel answerable later
-
-### `scene_tags`
-
-Rules:
-
-- must describe visible things, not abstract themes only
-- should support image lookup
-- should match the first reusable scene before a custom image
-
-## 5. Recommended Generation Pipeline
-
-Use this flow for production:
-
-1. Normalize the question
-2. Check for benchmark match
-3. Retrieve benchmark guidance if matched
-4. Call Ollama with schema-constrained output
-5. Validate JSON against schema
-6. Run safety and quality checks
-7. Match image scene
-8. Render answer
-9. Save to journal
-
-## 6. Benchmark-Aware Mode
-
-If the question is in the benchmark set:
-
-- the app should inject the benchmark truth note
-- the model should still write the story and narration
-- the model should not invent a new fact answer
-- the returned answer source should be `hybrid` for model-written benchmark answers, or `benchmark` for deterministic dummy/curated answers
-
-In other words:
-
-- benchmark questions should be content-guided
-- long-tail questions can remain more model-led
-
-## 7. Fallback Strategy
-
-The product should not pretend confidence when the answer is weak.
-
-### Low-confidence cases
-
-If:
-
-- schema validation fails
-- confidence is below threshold
-- scene tags are too vague
-- safety flags contain `needs-parent-review`
-
-Then:
-
-- retry once with a stricter prompt
-- if still weak, return a graceful parent-safe fallback
-- do not trust model-reported `confidence` as the quality gate; use server-side checks and provenance
-
-### Fallback UX
-
-Instead of hallucinating, say something like:
-
-`I want to answer that carefully. Let me try again with a simpler story.`
-
-If the second try is still weak:
-
-- do not store the answer as a successful journal entry
-- surface the retry path
-
-## 8. Example Output
+Example:
 
 ```json
 {
   "question": "Why does the moon follow our car?",
   "benchmark_id": "BQ-01",
   "topic": "space",
-  "fact_answer": "The moon is so far away that it seems to stay with us while nearby things move quickly past.",
-  "story_title": "The Moon Outside the Window",
-  "story_text": "One night, Anvita looked out of the car window and noticed that the moon seemed to come along for the ride...",
-  "narration_text": "The moon is not really following our car. It only looks that way because the moon is very far away, while nearby trees and signs move past quickly.",
-  "wonder_question": "I wonder why the moon looks bigger near the horizon?",
+  "fact_answer": "The moon looks like it follows your car because it is very far away, so it seems to move much more slowly than nearby trees and buildings.",
+  "story_title": "The Moon Comes Along",
+  "story_text": "Aanya looked out of the car window and saw the moon glowing like a soft round lamp...",
+  "narration_text": "The moon looks like it follows your car because it is very far away, so it seems to move much more slowly than nearby trees and buildings.",
+  "wonder_question": "I wonder why nearby trees seem to race past the window?",
   "scene_tags": ["moon", "car", "night", "trees", "distance"],
   "safety_flags": ["none"],
   "confidence": 0.96
 }
 ```
 
-## 9. How To Prompt Ollama
+## 4. Product Rules For Each Field
 
-Ollama supports structured outputs with a schema-based format contract.
+### `fact_answer`
 
-Use that instead of asking the model to "please return JSON" and hoping it behaves.
+This is the truth anchor.
 
-Recommended prompt strategy:
+Rules:
 
-- system prompt:
-  - child-safe answerer
-  - factual first
-  - story second
-  - no extra text outside schema
-- user prompt:
-  - original question
-  - child profile
-  - benchmark truth note when available
+- must be factual
+- must directly answer the question
+- should usually fit in 1-2 spoken sentences
+- should survive even if the story is hidden
 
-Reference:
+### `story_text`
 
-- [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs)
+This is the playful explanation.
 
-## 10. Integration Steps In This Repo
+Rules:
 
-### Step 1
+- should support the fact, not replace it
+- should make the answer easier to picture
+- should stay short enough for ages 3-6
+- should never become more magical than truthful
+- should not delay the answer with a long setup
 
-Create a new generation adapter that targets the schema instead of the current `GeneratedStory` type.
+### `narration_text`
 
-### Step 2
+This is the read-aloud layer.
 
-Split the current answer UI into:
+Current implementation note:
 
-- fact answer region
-- narration region
-- story region
-- scene region
+- the model is asked for `narration_text`
+- the server currently normalizes narration to the sentence-ended `fact_answer`
+- this avoids teaser narration like “let’s go on an adventure and find out”
 
-### Step 3
+That product choice keeps read-aloud answer-first and predictable.
 
-Update the DB model if needed to store:
+### `wonder_question`
 
-- fact answer
-- narration text
-- scene tags
-- confidence
+This is optional product flavor, not the main job.
 
-### Step 4
+Rules:
 
-Add a benchmark override layer before generation.
+- must start with `I wonder`
+- must stay on-topic
+- must never distract from the answer
 
-### Step 5
+If this becomes confusing in the UI, hide it rather than letting it compete with the answer.
 
-Add validation before saving any answer.
+### `scene_tags`
 
-## 11. Recommendation
+These power reusable visuals.
 
-Do not wire Ollama directly into the current prototype shape for too long.
+Rules:
 
-Move to the structured contract early.
+- must describe visible things
+- should avoid abstract tags only
+- should help match a starter SVG, curated image, animation, or future generated image
 
-That one decision will make:
+## 5. Generation Pipeline
 
-- evaluation easier
-- visual matching easier
-- narration better
-- factual quality easier to protect
+The current production-shaped flow is:
+
+1. Normalize the question.
+2. Check for benchmark match.
+3. Inject benchmark guidance if matched.
+4. Call Ollama with strict JSON instructions and no `format` field.
+5. Parse with `extractJsonObject`.
+6. Validate and normalize with `validateGeneratedAnswerV1`.
+7. Run safety and quality checks.
+8. Match a visual scene.
+9. Save successful answers to SQLite unless the request explicitly disables saving.
+10. Return a render-ready answer object to the browser.
+
+## 6. Benchmark-Aware Mode
+
+If the question maps to the benchmark set:
+
+- the app injects the benchmark truth note
+- the model still writes the story and scene metadata
+- the model must not contradict the benchmark fact
+- returned source is usually `hybrid`
+
+This is how we make common kid questions safer without turning the whole product into a fixed FAQ.
+
+## 7. Fallback Strategy
+
+The product should not pretend the model succeeded when the answer is weak.
+
+Fallback can trigger when:
+
+- Ollama is unavailable
+- Ollama times out
+- JSON parsing fails
+- required fields are missing
+- quality checks fail
+- safety routing requires parent review
+
+Fallback answers should be honest and safe. They should not be treated as high-quality journal entries unless we explicitly mark them as needing retry or review.
+
+## 8. What To Test
+
+Contract testing should cover:
+
+- valid JSON from dummy mode
+- valid JSON from live Ollama mode
+- malformed model output with prose before or after JSON
+- missing required fields
+- wrong topic values
+- teaser narration
+- benchmark fact preservation
+- timeout behavior
+- fallback behavior
+
+The important test is not “did the app produce text?”.
+
+The important test is: did the app produce a factual, child-safe, answer-first object that the UI can render reliably?
+
+## 9. Future Option: Structured Outputs
+
+Ollama supports structured outputs in some model/runtime combinations.
+
+That may become useful later, but it is not the current Wonder Journal contract path.
+
+If we revisit it, we should add it behind an explicit environment flag and compare:
+
+- JSON validity rate
+- latency
+- factual quality
+- compatibility with `qwen3:4b` and any replacement local model
+- failure behavior on the personal laptop
+
+Until then, the source of truth is local validation, not Ollama-enforced schema output.
+
+## 10. Recommendation
+
+Keep the structured contract.
+
+Keep the `format` field out for now.
+
+Keep improving the validator, benchmark set, and live Ollama evaluator before adding more product surface.
