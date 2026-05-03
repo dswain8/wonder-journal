@@ -1,11 +1,15 @@
 const OLLAMA_BASE_URL =
   process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen3:4b';
-const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 20000);
+
+const OLLAMA_MODEL =
+  process.env.OLLAMA_MODEL || 'qwen2.5:1.5b';
+
+const OLLAMA_TIMEOUT_MS = Number(
+  process.env.OLLAMA_TIMEOUT_MS || 20000,
+);
 
 interface GenerateWithOllamaOptions {
   model?: string;
-  numPredict?: number;
 }
 
 export async function generateWithOllama(
@@ -18,7 +22,9 @@ export async function generateWithOllama(
   try {
     response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       cache: 'no-store',
       signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
       body: JSON.stringify({
@@ -29,13 +35,15 @@ export async function generateWithOllama(
         options: {
           temperature: 0,
           top_p: 1,
-          num_predict: options.numPredict ?? 600,
+          num_predict: 120,
         },
       }),
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'TimeoutError') {
-      throw new Error(`Ollama request timed out after ${OLLAMA_TIMEOUT_MS}ms`);
+      throw new Error(
+        `Ollama request timed out after ${OLLAMA_TIMEOUT_MS}ms`,
+      );
     }
 
     throw error;
@@ -47,6 +55,11 @@ export async function generateWithOllama(
   }
 
   const data = await response.json();
+
+  if (!data.response || typeof data.response !== 'string') {
+    throw new Error('Ollama returned invalid response payload');
+  }
+
   return data.response;
 }
 
@@ -54,10 +67,13 @@ export function getOllamaConfig() {
   return {
     baseUrl: OLLAMA_BASE_URL,
     model: OLLAMA_MODEL,
+    timeoutMs: OLLAMA_TIMEOUT_MS,
   };
 }
 
-export async function fetchOllamaTags(): Promise<Array<{ name: string }>> {
+export async function fetchOllamaTags(): Promise<
+  Array<{ name: string }>
+> {
   const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
     method: 'GET',
     cache: 'no-store',

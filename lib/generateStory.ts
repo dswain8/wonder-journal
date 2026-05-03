@@ -28,7 +28,7 @@ YOUR TASK: Write a short story-answer for a child's question. The story is not a
 MAIN CHARACTER: A ${childAge}-year-old ${storyLead} named ${childName}. ${childName} is curious, brave, and kind.
 
 STRICT RULES:
-1. Story must be 150-250 words. No more.
+1. Story must be 50-100 words. No more.
 2. Use very simple words. A 4-year-old must understand every sentence.
 3. Start the story close to the question, not with a long setup.
 4. The answer must be REAL and CORRECT — do not make up fake science.
