@@ -27,6 +27,7 @@ interface StoryCardProps {
   activityPrompt?: string | null;
   storyStatus?: 'ready' | 'generating' | 'failed';
   isStoryGenerating?: boolean;
+  onRequestStory?: () => void;
   onAskAnother?: () => void;
 }
 
@@ -949,6 +950,7 @@ export default function StoryCard({
   activityPrompt,
   storyStatus = 'ready',
   isStoryGenerating = false,
+  onRequestStory,
   onAskAnother,
 }: StoryCardProps) {
   const [activeNarration, setActiveNarration] = useState<NarrationMode | null>(null);
@@ -1481,11 +1483,16 @@ export default function StoryCard({
               onClick={() => {
                 if (hasStory) {
                   setShowStory((current) => !current);
+                  return;
+                }
+
+                if (!isStoryGenerating) {
+                  onRequestStory?.();
                 }
               }}
               className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
               aria-expanded={showStory}
-              disabled={!hasStory}
+              disabled={!hasStory && (!onRequestStory || isStoryGenerating)}
             >
               <div>
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/45">
@@ -1498,7 +1505,9 @@ export default function StoryCard({
                       : 'Show the fun story answer'
                     : isStoryGenerating || storyStatus === 'generating'
                       ? `${guideName} is turning this into a story`
-                      : 'Story answer is not ready yet'}
+                      : storyStatus === 'failed'
+                        ? 'Try the story again'
+                        : 'Tell me a story'}
                 </p>
                 {!hasStory ? (
                   <p className="mt-1 text-xs leading-5 text-white/48">

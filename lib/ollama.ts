@@ -10,6 +10,7 @@ const OLLAMA_TIMEOUT_MS = Number(
 
 interface GenerateWithOllamaOptions {
   model?: string;
+  numPredict?: number;
 }
 
 export async function generateWithOllama(
@@ -35,7 +36,7 @@ export async function generateWithOllama(
         options: {
           temperature: 0,
           top_p: 1,
-          num_predict: 120,
+          num_predict: options.numPredict ?? 120,
         },
       }),
     });

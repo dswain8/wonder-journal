@@ -134,9 +134,25 @@ export interface GenerateResponse {
   cache_hit?: boolean;
   story_status?: 'ready' | 'generating' | 'failed';
   model?: string;
+  meta?: {
+    model: string;
+    cache_hit: boolean;
+    cache_ms: number;
+    fact_generation_ms?: number;
+    story_generation_ms?: number;
+    ollama_ms: number;
+    parse_ms: number;
+    total_ms: number;
+    generation_mode: 'dummy' | 'ollama' | 'fallback' | 'cache';
+    attempts: number;
+  };
   timing?: {
     cache_ms: number;
-    generation_ms: number;
+    generation_ms?: number;
+    fact_generation_ms?: number;
+    story_generation_ms?: number;
+    ollama_ms?: number;
+    parse_ms?: number;
     image_ms: number;
     persist_ms: number;
     total_ms: number;

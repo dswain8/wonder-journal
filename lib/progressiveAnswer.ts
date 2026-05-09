@@ -41,10 +41,7 @@ RESPONSE FORMAT (STRICT):
 - If you cannot comply, return {}.
 
 JSON STRUCTURE:
-{"question":"...","benchmark_id":null,"topic":"animals|space|nature|body|food|weather|ocean|transport|colors|mythology|culture|history|people|music|feelings|wonder","fact_answer":"...","narration_text":"...","wonder_question":"I wonder...","scene_tags":["..."],"confidence":0.9}
 
-TOPIC RULE:
-- If unsure, use "wonder". Never guess body, food, or transport unless the child clearly asks about that topic.`;
 }
 
 function buildStoryOnlySystemPrompt(profile: KidProfile): string {
@@ -82,6 +79,17 @@ export async function generateFastAnswer(
   question: string,
   profile: KidProfile = DEFAULT_KID_PROFILE,
 ): Promise<FastAnswerV1> {
+  return (await generateFastAnswerWithTimings(question, profile)).answer;
+}
+
+export async function generateFastAnswerWithTimings(
+  question: string,
+  profile: KidProfile = DEFAULT_KID_PROFILE,
+): Promise<{
+  answer: FastAnswerV1;
+  factGenerationMs: number;
+  parseMs: number;
+}> {
   const childName = profile.childName.trim() || DEFAULT_KID_PROFILE.childName;
   const fallbackTopic = classifyTopicByKeywords(question);
   const benchmark = lookupBenchmark(question);
@@ -101,23 +109,32 @@ ${benchmarkGuidance}
 Give the short answer first. Do not write the story yet.
 Respond with ONLY valid JSON matching the required structure.`;
 
+  const generationStartedAt = Date.now();
   const raw = await generateWithOllama(
     prompt,
     buildFastAnswerSystemPrompt(profile),
-    { numPredict: 260 },
+    { numPredict: 110 },
   );
+  const factGenerationMs = Date.now() - generationStartedAt;
 
+  const parseStartedAt = Date.now();
   try {
-    return validateFastAnswerV1(extractJsonObject(raw), {
+    const answer = validateFastAnswerV1(extractJsonObject(raw), {
       question,
       topic: benchmark?.expectedTopic ?? fallbackTopic,
       source: benchmark ? 'hybrid' : 'model',
     });
+    const parseMs = Date.now() - parseStartedAt;
+
+    return { answer, factGenerationMs, parseMs };
   } catch (error: unknown) {
+    const parseMs = Date.now() - parseStartedAt;
     const message =
       error instanceof Error ? error.message : 'Unknown parse error';
     throw new Error(
-      'Fast answer JSON parse failed: ' +
+      'Fast answer JSON parse failed after ' +
+        parseMs +
+        'ms: ' +
         message +
         '. Raw: ' +
         raw.substring(0, 300),
@@ -129,7 +146,19 @@ export async function generateStoryFromFastAnswer(
   answer: FastAnswerV1,
   profile: KidProfile = DEFAULT_KID_PROFILE,
 ): Promise<GeneratedAnswerV1> {
+  return (await generateStoryFromFastAnswerWithTimings(answer, profile)).answer;
+}
+
+export async function generateStoryFromFastAnswerWithTimings(
+  answer: FastAnswerV1,
+  profile: KidProfile = DEFAULT_KID_PROFILE,
+): Promise<{
+  answer: GeneratedAnswerV1;
+  storyGenerationMs: number;
+  parseMs: number;
+}> {
   const childName = profile.childName.trim() || DEFAULT_KID_PROFILE.childName;
+  const generationStartedAt = Date.now();
   const raw = await generateWithOllama(
     `Question: "${answer.question}"
 Correct short answer: "${answer.fact_answer}"
@@ -141,10 +170,12 @@ Write only the story title and story text. The story must explain the same answe
     buildStoryOnlySystemPrompt(profile),
     { numPredict: 520 },
   );
+  const storyGenerationMs = Date.now() - generationStartedAt;
 
+  const parseStartedAt = Date.now();
   try {
     const story = extractJsonObject(raw);
-    return validateGeneratedAnswerV1(
+    const generatedAnswer = validateGeneratedAnswerV1(
       {
         ...(typeof story === 'object' && story !== null ? story : {}),
         question: answer.question,
@@ -164,11 +195,17 @@ Write only the story title and story text. The story must explain the same answe
         source: answer.source,
       },
     );
+    const parseMs = Date.now() - parseStartedAt;
+
+    return { answer: generatedAnswer, storyGenerationMs, parseMs };
   } catch (error: unknown) {
+    const parseMs = Date.now() - parseStartedAt;
     const message =
       error instanceof Error ? error.message : 'Unknown parse error';
     throw new Error(
-      'Story JSON parse failed: ' +
+      'Story JSON parse failed after ' +
+        parseMs +
+        'ms: ' +
         message +
         '. Raw: ' +
         raw.substring(0, 300),

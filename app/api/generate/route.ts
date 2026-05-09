@@ -1,117 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
+<<<<<<< HEAD
 import db from '@/lib/db';
 import { getTryTogetherPrompt } from '@/lib/activity';
 import { scoreGeneratedAnswerQuality, isLowQualityAnswer } from '@/lib/answerQuality';
+=======
+import { scoreGeneratedAnswerQuality } from '@/lib/answerQuality';
+>>>>>>> c140621 (Add evals, fact-first flow, semantic alignment, and cache improvements)
 import { lookupBenchmark } from '@/lib/benchmarks';
 import { generateDummyAnswer } from '@/lib/dummyStory';
-import {
-  createSafeFallbackAnswer,
-  createSensitiveQuestionAnswer,
-} from '@/lib/fallbackAnswer';
-import { generateAnswer } from '@/lib/generateStory';
+import { createSensitiveQuestionAnswer } from '@/lib/fallbackAnswer';
 import { matchImage } from '@/lib/matchImage';
-import { detectSensitiveQuestion } from '@/lib/safety';
-import {
-  GeneratedAnswerV1,
-  KidProfile,
-  StoryLead,
-  WonderGuideId,
-} from '@/lib/types';
-import { DEFAULT_KID_PROFILE } from '@/lib/wonderGuides';
 import { getOllamaConfig } from '@/lib/ollama';
 import {
-  buildStoryCacheKey,
+  generateFastAnswerWithTimings,
+  scoreFastAnswerQuality,
+} from '@/lib/progressiveAnswer';
+import { detectSensitiveQuestion } from '@/lib/safety';
+import { saveGeneratedStory } from '@/lib/storyPersistence';
+import {
+  buildFactCacheKey,
+  FACT_CACHE_PROMPT_VERSION,
   getCachedAnswer,
-  saveCachedAnswer,
+  saveFactCachedAnswer,
 } from '@/lib/storyCache';
+import { validateQuestion, getProfileFromBody, nowMs } from '@/lib/apiRequest';
+import { FastAnswerV1, GeneratedAnswerV1 } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const useDummyStories = process.env.USE_DUMMY_STORIES === 'true';
-const MAX_QUESTION_LENGTH = 220;
 
-function nowMs() {
-  return Date.now();
-}
-
-function cleanText(value: string): string {
-  return value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-}
-
-async function generateAnswerWithRetry(
-  question: string,
-  profile: KidProfile,
-): Promise<{
-  answerData: GeneratedAnswerV1;
-  generationMode: 'dummy' | 'ollama' | 'fallback';
-  attempts: number;
-  shouldPersist: boolean;
-  qualityScore: number;
-}> {
-  const benchmark = lookupBenchmark(question);
-  const sensitiveQuestion = detectSensitiveQuestion(question);
-
-  if (sensitiveQuestion.isSensitive) {
-    const answerData = createSensitiveQuestionAnswer(
-      question,
-      profile,
-      sensitiveQuestion.safetyFlags,
-    );
-
-    return {
-      answerData,
-      generationMode: 'fallback',
-      attempts: 0,
-      shouldPersist: false,
-      qualityScore: 0.2,
-    };
-  }
-
-  if (useDummyStories) {
-    const answerData = generateDummyAnswer(question, profile);
-
-    return {
-      answerData,
-      generationMode: 'dummy',
-      attempts: 1,
-      shouldPersist: !answerData.safety_flags.includes('needs-parent-review'),
-      qualityScore: scoreGeneratedAnswerQuality(answerData, benchmark),
-    };
-  }
-
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    try {
-      const answerData = await generateAnswer(question, profile);
-      const qualityScore = scoreGeneratedAnswerQuality(answerData, benchmark);
-
-      if (isLowQualityAnswer(answerData, benchmark)) {
-        throw new Error(`Generated answer failed server quality checks: ${qualityScore}`);
-      }
-
-      return {
-        answerData,
-        generationMode: 'ollama',
-        attempts: attempt,
-        shouldPersist: !answerData.safety_flags.includes('needs-parent-review'),
-        qualityScore,
-      };
-    } catch (error) {
-      lastError = error;
-      console.warn(`Generation attempt ${attempt} failed`, error);
-    }
-  }
-
-  console.error('Generation fallback used:', lastError);
-
+function toFactOnlyAnswer(answer: FastAnswerV1): GeneratedAnswerV1 {
   return {
-    answerData: createSafeFallbackAnswer(question, profile),
-    generationMode: 'fallback',
-    attempts: 2,
-    shouldPersist: false,
-    qualityScore: 0.2,
+    ...answer,
+    story_title: 'Story coming soon',
+    story_text: '',
   };
 }
 
@@ -119,71 +43,39 @@ export async function POST(request: NextRequest) {
   const requestStartedAt = nowMs();
 
   try {
-    const { question, childName, childAge, storyLead, guide, save } =
-      (await request.json()) as Partial<KidProfile> & {
-        question?: string;
-        save?: boolean;
-      };
-
-    if (!question || typeof question !== 'string') {
-      return NextResponse.json(
-        { error: 'Question is required' },
-        { status: 400 },
-      );
-    }
-
-    const cleanQuestion = cleanText(question);
-
-    if (cleanQuestion.length === 0) {
-      return NextResponse.json(
-        { error: 'Question is required' },
-        { status: 400 },
-      );
-    }
-
-    if (cleanQuestion.length > MAX_QUESTION_LENGTH) {
-      return NextResponse.json(
-        { error: 'Please ask one short question at a time.' },
-        { status: 400 },
-      );
-    }
-
-    const cleanedChildName =
-      typeof childName === 'string' ? cleanText(childName).slice(0, 24) : '';
-    const profile: KidProfile = {
-      childName: cleanedChildName || DEFAULT_KID_PROFILE.childName,
-      childAge:
-        typeof childAge === 'number' && childAge >= 3 && childAge <= 8
-          ? childAge
-          : DEFAULT_KID_PROFILE.childAge,
-      storyLead:
-        storyLead === 'boy' || storyLead === 'neutral' || storyLead === 'girl'
-          ? (storyLead as StoryLead)
-          : DEFAULT_KID_PROFILE.storyLead,
-      guide:
-        guide === 'nachi' || guide === 'gargi'
-          ? (guide as WonderGuideId)
-          : DEFAULT_KID_PROFILE.guide,
+    const body = (await request.json()) as {
+      question?: unknown;
+      childName?: unknown;
+      childAge?: unknown;
+      storyLead?: unknown;
+      guide?: unknown;
+      save?: boolean;
     };
+    const questionResult = validateQuestion(body.question);
 
+    if (!questionResult.ok) {
+      return NextResponse.json(
+        { error: questionResult.error },
+        { status: questionResult.status },
+      );
+    }
+
+    const cleanQuestion = questionResult.question;
+    const profile = getProfileFromBody(body);
     const model = useDummyStories ? 'dummy' : getOllamaConfig().model;
     const cacheStartedAt = nowMs();
-    const cacheKey = buildStoryCacheKey(
-      cleanQuestion,
-      profile,
-      model,
-      useDummyStories ? 'dummy' : 'ollama',
-    );
+    const cacheKey = buildFactCacheKey(cleanQuestion, profile, model);
     const cachedAnswer = getCachedAnswer(cacheKey.hash);
     const cacheMs = nowMs() - cacheStartedAt;
 
     let answerData: GeneratedAnswerV1;
     let generationMode: 'dummy' | 'ollama' | 'fallback';
-    let attempts: number;
-    let shouldPersist: boolean;
-    let qualityScore: number;
+    let attempts = 1;
+    let qualityScore = 0.75;
+    let shouldPersist = true;
     let cacheHit = false;
-    let generationMs = 0;
+    let factGenerationMs = 0;
+    let parseMs = 0;
 
     if (cachedAnswer) {
       answerData = cachedAnswer.answerData;
@@ -193,88 +85,107 @@ export async function POST(request: NextRequest) {
       shouldPersist = !answerData.safety_flags.includes('needs-parent-review');
       cacheHit = true;
     } else {
-      const generationStartedAt = nowMs();
-      const generated = await generateAnswerWithRetry(cleanQuestion, profile);
-      generationMs = nowMs() - generationStartedAt;
+      const sensitiveQuestion = detectSensitiveQuestion(cleanQuestion);
 
-      answerData = generated.answerData;
-      generationMode = generated.generationMode;
-      attempts = generated.attempts;
-      shouldPersist = generated.shouldPersist;
-      qualityScore = generated.qualityScore;
+      if (sensitiveQuestion.isSensitive) {
+        answerData = createSensitiveQuestionAnswer(
+          cleanQuestion,
+          profile,
+          sensitiveQuestion.safetyFlags,
+        );
+        generationMode = 'fallback';
+        attempts = 0;
+        qualityScore = 0.2;
+        shouldPersist = false;
+      } else if (useDummyStories) {
+        const parseStartedAt = nowMs();
+        const dummy = generateDummyAnswer(cleanQuestion, profile);
+        parseMs = nowMs() - parseStartedAt;
+        answerData = {
+          ...dummy,
+          story_title: 'Story coming soon',
+          story_text: '',
+        };
+        generationMode = 'dummy';
+        qualityScore = scoreGeneratedAnswerQuality(
+          {
+            ...dummy,
+            story_text: dummy.story_text,
+          },
+          lookupBenchmark(cleanQuestion),
+        );
+      } else {
+        const fastAnswer = await generateFastAnswerWithTimings(
+          cleanQuestion,
+          profile,
+        );
+        answerData = toFactOnlyAnswer(fastAnswer.answer);
+        generationMode = 'ollama';
+        factGenerationMs = fastAnswer.factGenerationMs;
+        parseMs = fastAnswer.parseMs;
+        qualityScore = scoreFastAnswerQuality(fastAnswer.answer);
+      }
 
-      saveCachedAnswer(cacheKey.hash, cacheKey.normalizedQuestion, profile.childAge, {
-        answerData,
-        generationMode,
-        attempts,
-        qualityScore,
-      });
+      saveFactCachedAnswer(
+        cacheKey.hash,
+        cacheKey.normalizedQuestion,
+        profile.childAge,
+        model,
+        {
+          answerData,
+          generationMode,
+          attempts,
+          qualityScore,
+        },
+      );
     }
 
     const imageStartedAt = nowMs();
     const image = matchImage(cleanQuestion, answerData.topic, answerData.fact_answer);
     const imageMs = nowMs() - imageStartedAt;
-    const activityPrompt = getTryTogetherPrompt({
-      question: cleanQuestion,
-      factAnswer: answerData.fact_answer,
-      topic: answerData.topic,
-      sceneTags: answerData.scene_tags,
-    });
-
-    const shouldSave = save !== false && shouldPersist;
     const persistStartedAt = nowMs();
     const storyId = shouldSave
-      ? Number(
-          db
-            .prepare(`
-              INSERT INTO stories (
-                question,
-                story_title,
-                story_text,
-                fact_answer,
-                narration_text,
-                wonder_question,
-                image_path,
-                image_category,
-                scene_tags,
-                confidence,
-                answer_source,
-                quality_score,
-                child_name,
-                child_age
-              )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `)
-            .run(
-              cleanQuestion,
-              answerData.story_title,
-              answerData.story_text,
-              answerData.fact_answer,
-              answerData.narration_text,
-              answerData.wonder_question,
-              image?.path ?? null,
-              image?.category ?? answerData.topic,
-              JSON.stringify(answerData.scene_tags),
-              answerData.confidence,
-              answerData.source,
-              qualityScore,
-              profile.childName,
-              profile.childAge,
-            ).lastInsertRowid,
-        )
+      ? saveGeneratedStory({
+          question: cleanQuestion,
+          answerData,
+          imagePath: image?.path ?? null,
+          imageCategory: image?.category ?? answerData.topic,
+          profile,
+          qualityScore,
+        })
       : 0;
     const persistMs = nowMs() - persistStartedAt;
     const totalMs = nowMs() - requestStartedAt;
+    const storyStatus =
+      answerData.story_text.trim().length > 0 ||
+      answerData.safety_flags.includes('needs-parent-review')
+        ? 'ready'
+        : 'generating';
+    const meta = {
+      model,
+      cache_hit: cacheHit,
+      cache_ms: cacheMs,
+      fact_generation_ms: factGenerationMs,
+      story_generation_ms: 0,
+      ollama_ms: factGenerationMs,
+      parse_ms: parseMs,
+      total_ms: totalMs,
+      generation_mode: generationMode,
+      attempts,
+    };
 
-    console.info('Wonder Journal generation timing', {
+    console.info('Wonder Journal fact generation timing', {
       question: cleanQuestion,
+      normalizedQuestion: cacheKey.normalizedQuestion,
+      promptVersion: FACT_CACHE_PROMPT_VERSION,
       model,
       generationMode,
       cacheHit,
       attempts,
       timing: {
         cache_ms: cacheMs,
-        generation_ms: generationMs,
+        fact_generation_ms: factGenerationMs,
+        parse_ms: parseMs,
         image_ms: imageMs,
         persist_ms: persistMs,
         total_ms: totalMs,
@@ -301,10 +212,15 @@ export async function POST(request: NextRequest) {
       generation_mode: generationMode,
       attempts,
       cache_hit: cacheHit,
+      story_status: storyStatus === 'generating' ? undefined : storyStatus,
       model,
+      meta,
       timing: {
         cache_ms: cacheMs,
-        generation_ms: generationMs,
+        fact_generation_ms: factGenerationMs,
+        story_generation_ms: 0,
+        ollama_ms: factGenerationMs,
+        parse_ms: parseMs,
         image_ms: imageMs,
         persist_ms: persistMs,
         total_ms: totalMs,
@@ -314,7 +230,7 @@ export async function POST(request: NextRequest) {
       guide: profile.guide,
     });
   } catch (error: unknown) {
-    console.error('Generation error:', error);
+    console.error('Fact generation error:', error);
     const message = error instanceof Error ? error.message.toLowerCase() : '';
 
     if (
@@ -334,26 +250,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (
-      error instanceof Error &&
-      error.message.includes('safety check')
-    ) {
-      return NextResponse.json(
-        { error: 'The answer needs another careful try. Please ask again.' },
-        { status: 422 },
-      );
-    }
-
-    if (error instanceof Error && error.message.includes('JSON parse')) {
-      return NextResponse.json(
-        { error: 'The answer got a bit jumbled. Please try again!' },
-        { status: 422 },
-      );
-    }
-
     return NextResponse.json(
-      { error: 'Something went wrong. Please try again.' },
-      { status: 500 },
+      { error: 'The answer got a bit jumbled. Please try again!' },
+      { status: 422 },
     );
   }
 }

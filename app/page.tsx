@@ -87,7 +87,7 @@ export default function Home() {
     setActiveQuestion(question);
 
     try {
-      const answerResponse = await fetch('/api/answer', {
+      const answerResponse = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -96,6 +96,7 @@ export default function Home() {
           childAge: profile.childAge,
           storyLead: profile.storyLead,
           guide: profile.guide,
+          save: false,
         }),
       });
 
@@ -110,51 +111,53 @@ export default function Home() {
       const fastAnswer = answerData as GenerateResponse;
       setStory(fastAnswer);
       setIsLoading(false);
+    } catch {
+      setError('Could not connect. Is Ollama running?');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      if (fastAnswer.story_status !== 'generating') {
-        return;
-      }
+  const handleRequestStory = async () => {
+    if (!story || isStoryGenerating || story.story_status === 'ready') {
+      return;
+    }
 
-      setIsStoryGenerating(true);
+    setIsStoryGenerating(true);
+    setStory((currentStory) =>
+      currentStory
+        ? {
+            ...currentStory,
+            story_status: 'generating',
+          }
+        : currentStory,
+    );
 
-      try {
-        const storyResponse = await fetch('/api/story', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question: fastAnswer.question,
-            benchmark_id: null,
-            topic: fastAnswer.topic,
-            fact_answer: fastAnswer.fact_answer,
-            narration_text: fastAnswer.narration_text,
-            wonder_question: fastAnswer.wonder_question,
-            scene_tags: fastAnswer.scene_tags,
-            safety_flags: fastAnswer.safety_flags,
-            confidence: fastAnswer.confidence,
-            source: fastAnswer.source,
-            childName: profile.childName,
-            childAge: profile.childAge,
-            storyLead: profile.storyLead,
-            guide: profile.guide,
-          }),
-        });
+    try {
+      const storyResponse = await fetch('/api/generate-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: story.question,
+          benchmark_id: null,
+          topic: story.topic,
+          fact_answer: story.fact_answer,
+          narration_text: story.narration_text,
+          wonder_question: story.wonder_question,
+          scene_tags: story.scene_tags,
+          safety_flags: story.safety_flags,
+          confidence: story.confidence,
+          source: story.source,
+          childName: profile.childName,
+          childAge: profile.childAge,
+          storyLead: profile.storyLead,
+          guide: profile.guide,
+        }),
+      });
 
-        const storyData = await storyResponse.json();
+      const storyData = await storyResponse.json();
 
-        if (!storyResponse.ok) {
-          setStory((currentStory) =>
-            currentStory
-              ? {
-                  ...currentStory,
-                  story_status: 'failed',
-                }
-              : currentStory,
-          );
-          return;
-        }
-
-        setStory(storyData as GenerateResponse);
-      } catch {
+      if (!storyResponse.ok) {
         setStory((currentStory) =>
           currentStory
             ? {
@@ -163,13 +166,21 @@ export default function Home() {
               }
             : currentStory,
         );
-      } finally {
-        setIsStoryGenerating(false);
+        return;
       }
+
+      setStory(storyData as GenerateResponse);
     } catch {
-      setError('Could not connect. Is Ollama running?');
+      setStory((currentStory) =>
+        currentStory
+          ? {
+              ...currentStory,
+              story_status: 'failed',
+            }
+          : currentStory,
+      );
     } finally {
-      setIsLoading(false);
+      setIsStoryGenerating(false);
     }
   };
 
@@ -320,6 +331,7 @@ export default function Home() {
             guide={profile.guide}
             storyStatus={story.story_status}
             isStoryGenerating={isStoryGenerating}
+            onRequestStory={handleRequestStory}
             onAskAnother={() => {
               setStory(null);
               setIsStoryGenerating(false);

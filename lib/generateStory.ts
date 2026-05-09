@@ -65,6 +65,17 @@ export async function generateAnswer(
   question: string,
   profile: KidProfile = DEFAULT_KID_PROFILE,
 ): Promise<GeneratedAnswerV1> {
+  return (await generateAnswerWithTimings(question, profile)).answer;
+}
+
+export async function generateAnswerWithTimings(
+  question: string,
+  profile: KidProfile = DEFAULT_KID_PROFILE,
+): Promise<{
+  answer: GeneratedAnswerV1;
+  ollamaMs: number;
+  parseMs: number;
+}> {
   const childName = profile.childName.trim() || DEFAULT_KID_PROFILE.childName;
   const childAge = Number.isFinite(profile.childAge)
     ? profile.childAge
@@ -91,15 +102,23 @@ Write a structured answer for Wonder Journal.
 Use ${childName} as the main character in the story.
 Respond with ONLY valid JSON matching the required schema.`;
 
+  const ollamaStartedAt = Date.now();
   const raw = await generateWithOllama(prompt, buildStorySystemPrompt(profile));
+  const ollamaMs = Date.now() - ollamaStartedAt;
 
+  const parseStartedAt = Date.now();
   try {
-    return validateGeneratedAnswerV1(extractJsonObject(raw), {
+    const answer = validateGeneratedAnswerV1(extractJsonObject(raw), {
       question,
       topic: benchmark?.expectedTopic ?? fallbackTopic,
       source: benchmark ? 'hybrid' : 'model',
     });
+    const parseMs = Date.now() - parseStartedAt;
+
+    return { answer, ollamaMs, parseMs };
   } catch (error: unknown) {
+    const parseMs = Date.now() - parseStartedAt;
+
     if (error instanceof Error && error.message.includes('safety check')) {
       throw error;
     }
@@ -107,7 +126,12 @@ Respond with ONLY valid JSON matching the required schema.`;
     const message =
       error instanceof Error ? error.message : 'Unknown parse error';
     throw new Error(
-      'JSON parse failed: ' + message + '. Raw: ' + raw.substring(0, 300),
+      'JSON parse failed after ' +
+        parseMs +
+        'ms: ' +
+        message +
+        '. Raw: ' +
+        raw.substring(0, 300),
     );
   }
 }

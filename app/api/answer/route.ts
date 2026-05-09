@@ -10,8 +10,9 @@ import { generateFastAnswer, scoreFastAnswerQuality } from '@/lib/progressiveAns
 import { detectSensitiveQuestion } from '@/lib/safety';
 import { validateQuestion, getProfileFromBody, nowMs } from '@/lib/apiRequest';
 import {
-  buildStoryCacheKey,
+  buildFactCacheKey,
   getCachedAnswer,
+  saveFactCachedAnswer,
 } from '@/lib/storyCache';
 
 export const runtime = 'nodejs';
@@ -37,11 +38,10 @@ export async function POST(request: NextRequest) {
     const profile = getProfileFromBody(body);
     const model = useDummyStories ? 'dummy' : getOllamaConfig().model;
     const cacheStartedAt = nowMs();
-    const cacheKey = buildStoryCacheKey(
+    const cacheKey = buildFactCacheKey(
       cleanQuestion,
       profile,
       model,
-      useDummyStories ? 'dummy' : 'ollama',
     );
     const cachedStory = getCachedAnswer(cacheKey.hash);
     const cacheMs = nowMs() - cacheStartedAt;
@@ -78,7 +78,8 @@ export async function POST(request: NextRequest) {
         generation_mode: 'cache',
         attempts: cachedStory.attempts,
         cache_hit: true,
-        story_status: 'ready',
+        story_status:
+          answerData.story_text.trim().length > 0 ? 'ready' : 'generating',
         model,
         timing: {
           cache_ms: cacheMs,
@@ -139,6 +140,19 @@ export async function POST(request: NextRequest) {
       generationMode === 'dummy' || generationMode === 'fallback'
         ? 'ready'
         : 'generating';
+
+    saveFactCachedAnswer(
+      cacheKey.hash,
+      cacheKey.normalizedQuestion,
+      profile.childAge,
+      model,
+      {
+        answerData,
+        generationMode,
+        attempts,
+        qualityScore,
+      },
+    );
 
     return NextResponse.json({
       id: 0,

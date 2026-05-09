@@ -5,13 +5,17 @@ import { lookupBenchmark } from '@/lib/benchmarks';
 import { generateDummyAnswer } from '@/lib/dummyStory';
 import { matchImage } from '@/lib/matchImage';
 import { getOllamaConfig } from '@/lib/ollama';
-import { generateStoryFromFastAnswer } from '@/lib/progressiveAnswer';
+import {
+  generateFastAnswerWithTimings,
+  generateStoryFromFastAnswerWithTimings,
+} from '@/lib/progressiveAnswer';
 import { getProfileFromBody, nowMs, validateQuestion } from '@/lib/apiRequest';
 import { saveGeneratedStory } from '@/lib/storyPersistence';
 import {
   buildStoryCacheKey,
   getCachedAnswer,
-  saveCachedAnswer,
+  saveStoryCachedAnswer,
+  STORY_CACHE_PROMPT_VERSION,
 } from '@/lib/storyCache';
 import { FastAnswerV1 } from '@/lib/types';
 
@@ -35,18 +39,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (
-      typeof body.fact_answer !== 'string' ||
-      typeof body.narration_text !== 'string' ||
-      typeof body.topic !== 'string' ||
-      !Array.isArray(body.scene_tags)
-    ) {
-      return NextResponse.json(
-        { error: 'Fast answer payload is required before story generation.' },
-        { status: 400 },
-      );
-    }
-
     const cleanQuestion = questionResult.question;
     const profile = getProfileFromBody({
       childName: body.childName,
@@ -60,7 +52,6 @@ export async function POST(request: NextRequest) {
       cleanQuestion,
       profile,
       model,
-      useDummyStories ? 'dummy' : 'ollama',
     );
     const cachedStory = getCachedAnswer(cacheKey.hash);
     const cacheMs = nowMs() - cacheStartedAt;
@@ -69,7 +60,9 @@ export async function POST(request: NextRequest) {
     let generationMode: 'dummy' | 'ollama' | 'fallback' | 'cache' = 'ollama';
     let attempts = 1;
     let qualityScore = 0.75;
-    let generationMs = 0;
+    let factGenerationMs = 0;
+    let storyGenerationMs = 0;
+    let parseMs = 0;
 
     if (cachedStory) {
       answerData = cachedStory.answerData;
@@ -85,8 +78,15 @@ export async function POST(request: NextRequest) {
       );
     } else {
       const generationStartedAt = nowMs();
-      answerData = await generateStoryFromFastAnswer(
-        {
+      let fastAnswer: FastAnswerV1;
+
+      if (
+        typeof body.fact_answer === 'string' &&
+        typeof body.narration_text === 'string' &&
+        typeof body.topic === 'string' &&
+        Array.isArray(body.scene_tags)
+      ) {
+        fastAnswer = {
           question: cleanQuestion,
           benchmark_id: typeof body.benchmark_id === 'string' ? body.benchmark_id : null,
           topic: body.topic as FastAnswerV1['topic'],
@@ -111,20 +111,42 @@ export async function POST(request: NextRequest) {
             body.source === 'fallback'
               ? body.source
               : 'model',
-        },
+        };
+      } else {
+        const generatedFact = await generateFastAnswerWithTimings(
+          cleanQuestion,
+          profile,
+        );
+        fastAnswer = generatedFact.answer;
+        factGenerationMs = generatedFact.factGenerationMs;
+        parseMs += generatedFact.parseMs;
+      }
+
+      const generatedStory = await generateStoryFromFastAnswerWithTimings(
+        fastAnswer,
         profile,
       );
-      generationMs = nowMs() - generationStartedAt;
+      answerData = generatedStory.answer;
+      storyGenerationMs = generatedStory.storyGenerationMs;
+      parseMs += generatedStory.parseMs;
+      const generationMs = nowMs() - generationStartedAt;
       qualityScore = scoreGeneratedAnswerQuality(
         answerData,
         lookupBenchmark(cleanQuestion),
       );
-      saveCachedAnswer(cacheKey.hash, cacheKey.normalizedQuestion, profile.childAge, {
-        answerData,
-        generationMode: 'ollama',
-        attempts,
-        qualityScore,
-      });
+      saveStoryCachedAnswer(
+        cacheKey.hash,
+        cacheKey.normalizedQuestion,
+        profile.childAge,
+        model,
+        {
+          answerData,
+          generationMode: 'ollama',
+          attempts,
+          qualityScore,
+        },
+      );
+      storyGenerationMs = storyGenerationMs || generationMs;
     }
 
     const imageStartedAt = nowMs();
@@ -150,6 +172,37 @@ export async function POST(request: NextRequest) {
         })
       : 0;
     const persistMs = nowMs() - persistStartedAt;
+    const totalMs = nowMs() - requestStartedAt;
+    const meta = {
+      model,
+      cache_hit: generationMode === 'cache',
+      cache_ms: cacheMs,
+      fact_generation_ms: factGenerationMs,
+      story_generation_ms: storyGenerationMs,
+      ollama_ms: factGenerationMs + storyGenerationMs,
+      parse_ms: parseMs,
+      total_ms: totalMs,
+      generation_mode: generationMode,
+      attempts,
+    };
+
+    console.info('Wonder Journal story generation timing', {
+      question: cleanQuestion,
+      normalizedQuestion: cacheKey.normalizedQuestion,
+      promptVersion: STORY_CACHE_PROMPT_VERSION,
+      model,
+      generationMode,
+      attempts,
+      timing: {
+        cache_ms: cacheMs,
+        fact_generation_ms: factGenerationMs,
+        story_generation_ms: storyGenerationMs,
+        parse_ms: parseMs,
+        image_ms: imageMs,
+        persist_ms: persistMs,
+        total_ms: totalMs,
+      },
+    });
 
     return NextResponse.json({
       id: storyId,
@@ -173,12 +226,17 @@ export async function POST(request: NextRequest) {
       cache_hit: generationMode === 'cache',
       story_status: 'ready',
       model,
+      meta,
       timing: {
         cache_ms: cacheMs,
-        generation_ms: generationMs,
+        generation_ms: storyGenerationMs,
+        fact_generation_ms: factGenerationMs,
+        story_generation_ms: storyGenerationMs,
+        ollama_ms: factGenerationMs + storyGenerationMs,
+        parse_ms: parseMs,
         image_ms: imageMs,
         persist_ms: persistMs,
-        total_ms: nowMs() - requestStartedAt,
+        total_ms: totalMs,
       },
       child_name: profile.childName,
       child_age: profile.childAge,
