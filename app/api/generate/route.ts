@@ -17,12 +17,22 @@ import {
   WonderGuideId,
 } from '@/lib/types';
 import { DEFAULT_KID_PROFILE } from '@/lib/wonderGuides';
+import { getOllamaConfig } from '@/lib/ollama';
+import {
+  buildStoryCacheKey,
+  getCachedAnswer,
+  saveCachedAnswer,
+} from '@/lib/storyCache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const useDummyStories = process.env.USE_DUMMY_STORIES === 'true';
 const MAX_QUESTION_LENGTH = 220;
+
+function nowMs() {
+  return Date.now();
+}
 
 function cleanText(value: string): string {
   return value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
@@ -105,6 +115,8 @@ async function generateAnswerWithRetry(
 }
 
 export async function POST(request: NextRequest) {
+  const requestStartedAt = nowMs();
+
   try {
     const { question, childName, childAge, storyLead, guide, save } =
       (await request.json()) as Partial<KidProfile> & {
@@ -153,16 +165,57 @@ export async function POST(request: NextRequest) {
           : DEFAULT_KID_PROFILE.guide,
     };
 
-    const {
-      answerData,
-      generationMode,
-      attempts,
-      shouldPersist,
-      qualityScore,
-    } = await generateAnswerWithRetry(cleanQuestion, profile);
+    const model = useDummyStories ? 'dummy' : getOllamaConfig().model;
+    const cacheStartedAt = nowMs();
+    const cacheKey = buildStoryCacheKey(
+      cleanQuestion,
+      profile,
+      model,
+      useDummyStories ? 'dummy' : 'ollama',
+    );
+    const cachedAnswer = getCachedAnswer(cacheKey.hash);
+    const cacheMs = nowMs() - cacheStartedAt;
+
+    let answerData: GeneratedAnswerV1;
+    let generationMode: 'dummy' | 'ollama' | 'fallback';
+    let attempts: number;
+    let shouldPersist: boolean;
+    let qualityScore: number;
+    let cacheHit = false;
+    let generationMs = 0;
+
+    if (cachedAnswer) {
+      answerData = cachedAnswer.answerData;
+      generationMode = cachedAnswer.generationMode;
+      attempts = cachedAnswer.attempts;
+      qualityScore = cachedAnswer.qualityScore;
+      shouldPersist = !answerData.safety_flags.includes('needs-parent-review');
+      cacheHit = true;
+    } else {
+      const generationStartedAt = nowMs();
+      const generated = await generateAnswerWithRetry(cleanQuestion, profile);
+      generationMs = nowMs() - generationStartedAt;
+
+      answerData = generated.answerData;
+      generationMode = generated.generationMode;
+      attempts = generated.attempts;
+      shouldPersist = generated.shouldPersist;
+      qualityScore = generated.qualityScore;
+
+      saveCachedAnswer(cacheKey.hash, cacheKey.normalizedQuestion, profile.childAge, {
+        answerData,
+        generationMode,
+        attempts,
+        qualityScore,
+      });
+    }
+
+    const imageStartedAt = nowMs();
     const image = matchImage(cleanQuestion, answerData.topic);
+    const imageMs = nowMs() - imageStartedAt;
 
     const shouldSave = save !== false && shouldPersist;
+    const persistStartedAt = nowMs();
     const storyId = shouldSave
       ? Number(
           db
@@ -203,6 +256,23 @@ export async function POST(request: NextRequest) {
             ).lastInsertRowid,
         )
       : 0;
+    const persistMs = nowMs() - persistStartedAt;
+    const totalMs = nowMs() - requestStartedAt;
+
+    console.info('Wonder Journal generation timing', {
+      question: cleanQuestion,
+      model,
+      generationMode,
+      cacheHit,
+      attempts,
+      timing: {
+        cache_ms: cacheMs,
+        generation_ms: generationMs,
+        image_ms: imageMs,
+        persist_ms: persistMs,
+        total_ms: totalMs,
+      },
+    });
 
     return NextResponse.json({
       id: storyId,
@@ -222,6 +292,15 @@ export async function POST(request: NextRequest) {
       saved: shouldSave,
       generation_mode: generationMode,
       attempts,
+      cache_hit: cacheHit,
+      model,
+      timing: {
+        cache_ms: cacheMs,
+        generation_ms: generationMs,
+        image_ms: imageMs,
+        persist_ms: persistMs,
+        total_ms: totalMs,
+      },
       child_name: profile.childName,
       child_age: profile.childAge,
       guide: profile.guide,

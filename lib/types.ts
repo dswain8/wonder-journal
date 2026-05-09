@@ -109,6 +109,15 @@ export interface GenerateResponse {
   saved: boolean;
   generation_mode: 'dummy' | 'ollama' | 'fallback';
   attempts: number;
+  cache_hit?: boolean;
+  model?: string;
+  timing?: {
+    cache_ms: number;
+    generation_ms: number;
+    image_ms: number;
+    persist_ms: number;
+    total_ms: number;
+  };
   child_name: string;
   child_age: number;
   guide: WonderGuideId;

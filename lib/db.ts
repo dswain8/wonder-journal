@@ -35,6 +35,16 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS story_cache (
+    question_hash TEXT PRIMARY KEY,
+    normalized_question TEXT NOT NULL,
+    child_age INTEGER NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 function ensureColumn(name: string, definition: string) {
   const columns = db
     .prepare('PRAGMA table_info(stories)')
