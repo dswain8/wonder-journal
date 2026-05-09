@@ -14,6 +14,12 @@ export const VALID_TOPICS = [
   'ocean',
   'transport',
   'colors',
+  'mythology',
+  'culture',
+  'history',
+  'people',
+  'music',
+  'feelings',
   'wonder',
 ] as const;
 
@@ -86,6 +92,7 @@ export interface GeneratedAnswerV1 {
   narration_text: string;
   wonder_question: string;
   scene_tags: string[];
+  activity_prompt?: string;
   safety_flags: SafetyFlag[];
   confidence: number;
   source: AnswerSource;
@@ -99,6 +106,7 @@ export interface FastAnswerV1 {
   narration_text: string;
   wonder_question: string;
   scene_tags: string[];
+  activity_prompt?: string;
   safety_flags: SafetyFlag[];
   confidence: number;
   source: AnswerSource;
@@ -115,6 +123,7 @@ export interface GenerateResponse {
   topic: StoryTopic;
   question: string;
   scene_tags: string[];
+  activity_prompt?: string;
   safety_flags: SafetyFlag[];
   confidence: number;
   source: AnswerSource;

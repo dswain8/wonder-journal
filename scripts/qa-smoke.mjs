@@ -22,6 +22,41 @@ const topicQuestions = [
   ['wonder', 'Why do we ask questions?'],
 ];
 
+const semanticCases = [
+  {
+    name: 'Krishna mythology alignment',
+    question: 'Who is Krishna?',
+    expectedTopic: 'mythology',
+    requiredActivity: /flute|twirl|krishna/i,
+    forbiddenImage: /body-heart|heartbeat|anatomy/i,
+    forbiddenActivity: /chest|jump|heartbeat/i,
+  },
+  {
+    name: 'Hanuman mythology alignment',
+    question: 'Who is Hanuman?',
+    expectedTopic: 'mythology',
+    requiredActivity: /brave|helper|leap|kind/i,
+    forbiddenImage: /body-heart|heartbeat|anatomy/i,
+    forbiddenActivity: /chest|heartbeat/i,
+  },
+  {
+    name: 'Dinosaur animal alignment',
+    question: 'Why did dinosaurs disappear?',
+    expectedTopic: 'animals',
+    requiredActivity: /animal|body|lives|clue|wonder|room/i,
+    forbiddenImage: /transport-rocket|body-heart/i,
+    forbiddenActivity: /wheel|chest/i,
+  },
+  {
+    name: 'Music activity alignment',
+    question: 'Why do people dance?',
+    expectedTopic: 'music',
+    requiredActivity: /rhythm|beat|circle|move/i,
+    forbiddenImage: /body-heart|transport-rocket/i,
+    forbiddenActivity: /chest|wheel/i,
+  },
+];
+
 function record(name, ok, evidence) {
   results.push({ name, ok, evidence });
   const marker = ok ? 'PASS' : 'FAIL';
@@ -214,6 +249,33 @@ try {
     'Open-ended question narration still reads the answer first',
     flowers.data?.narration_text || `HTTP ${flowers.response.status}`,
   );
+
+  for (const semanticCase of semanticCases) {
+    const semanticAnswer = await requestJson('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        question: semanticCase.question,
+        childName: 'Aanya',
+        childAge: 5,
+        guide: 'gargi',
+        save: false,
+      }),
+    });
+    const imageUrl = semanticAnswer.data?.image_url || '';
+    const activity = semanticAnswer.data?.activity_prompt || '';
+    const ok =
+      semanticAnswer.response.status === 200 &&
+      semanticAnswer.data?.topic === semanticCase.expectedTopic &&
+      semanticCase.requiredActivity.test(activity) &&
+      !semanticCase.forbiddenImage.test(imageUrl) &&
+      !semanticCase.forbiddenActivity.test(activity);
+
+    assertCondition(
+      ok,
+      semanticCase.name,
+      `topic=${semanticAnswer.data?.topic}; image=${imageUrl}; activity=${activity}`,
+    );
+  }
 
   for (const [expectedTopic, topicQuestion] of topicQuestions) {
     const topicAnswer = await requestJson('/api/generate', {

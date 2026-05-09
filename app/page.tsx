@@ -312,6 +312,7 @@ export default function Home() {
             factAnswer={story.fact_answer}
             narrationText={story.narration_text}
             sceneTags={story.scene_tags}
+            activityPrompt={story.activity_prompt}
             source={story.source}
             qualityScore={story.quality_score}
             topic={story.topic}

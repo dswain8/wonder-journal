@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { getTryTogetherPrompt } from '@/lib/activity';
 import { scoreGeneratedAnswerQuality, isLowQualityAnswer } from '@/lib/answerQuality';
 import { lookupBenchmark } from '@/lib/benchmarks';
 import { generateDummyAnswer } from '@/lib/dummyStory';
@@ -211,8 +212,14 @@ export async function POST(request: NextRequest) {
     }
 
     const imageStartedAt = nowMs();
-    const image = matchImage(cleanQuestion, answerData.topic);
+    const image = matchImage(cleanQuestion, answerData.topic, answerData.fact_answer);
     const imageMs = nowMs() - imageStartedAt;
+    const activityPrompt = getTryTogetherPrompt({
+      question: cleanQuestion,
+      factAnswer: answerData.fact_answer,
+      topic: answerData.topic,
+      sceneTags: answerData.scene_tags,
+    });
 
     const shouldSave = save !== false && shouldPersist;
     const persistStartedAt = nowMs();
@@ -285,6 +292,7 @@ export async function POST(request: NextRequest) {
       topic: answerData.topic,
       question: cleanQuestion,
       scene_tags: answerData.scene_tags,
+      activity_prompt: activityPrompt,
       safety_flags: answerData.safety_flags,
       confidence: answerData.confidence,
       source: answerData.source,

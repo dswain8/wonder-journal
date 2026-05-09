@@ -41,7 +41,10 @@ RESPONSE FORMAT (STRICT):
 - If you cannot comply, return {}.
 
 JSON STRUCTURE:
-{"question":"...","benchmark_id":null,"topic":"animals|space|nature|body|food|weather|ocean|transport|colors|wonder","fact_answer":"...","narration_text":"...","wonder_question":"I wonder...","scene_tags":["..."],"confidence":0.9}`;
+{"question":"...","benchmark_id":null,"topic":"animals|space|nature|body|food|weather|ocean|transport|colors|mythology|culture|history|people|music|feelings|wonder","fact_answer":"...","narration_text":"...","wonder_question":"I wonder...","scene_tags":["..."],"confidence":0.9}
+
+TOPIC RULE:
+- If unsure, use "wonder". Never guess body, food, or transport unless the child clearly asks about that topic.`;
 }
 
 function buildStoryOnlySystemPrompt(profile: KidProfile): string {

@@ -15,7 +15,7 @@ type TopicScript = {
   wonderQuestions: string[];
 };
 
-const TOPIC_LIBRARY: Record<StoryTopic, TopicScript> = {
+const TOPIC_LIBRARY: Partial<Record<StoryTopic, TopicScript>> = {
   animals: {
     answer:
       'Animals look and act in special ways because each body part helps them live, move, find food, or stay safe.',
@@ -247,6 +247,10 @@ export function generateDummyAnswer(
   const specialMatch = SPECIAL_MATCHES.find(({ match }) => match.test(cleanQuestion));
   const topic = benchmark?.expectedTopic ?? specialMatch?.topic ?? classifyTopicByKeywords(cleanQuestion);
   const script = TOPIC_LIBRARY[topic] ?? TOPIC_LIBRARY.wonder;
+
+  if (!script) {
+    throw new Error('Missing fallback wonder topic script');
+  }
   const seed = hashString(cleanQuestion.toLowerCase());
 
   const title = personalize(specialMatch?.title ?? pickItem(script.titles, seed), childName);

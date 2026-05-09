@@ -1,4 +1,5 @@
 import schema from './schemas/generated-answer-v1.schema.json';
+import { alignTopic } from './semanticAlignment';
 import {
   AnswerSource,
   FastAnswerV1,
@@ -208,7 +209,7 @@ export function validateGeneratedAnswerV1(
   }
 
   const topicValue = getString(value, 'topic');
-  const topic = VALID_TOPICS.includes(topicValue as StoryTopic)
+  const proposedTopic = VALID_TOPICS.includes(topicValue as StoryTopic)
     ? (topicValue as StoryTopic)
     : fallbacks.topic;
   const question = getString(value, 'question') ?? fallbacks.question;
@@ -235,6 +236,11 @@ export function validateGeneratedAnswerV1(
     throw new Error('Missing required field: wonder_question');
   }
 
+  const alignedTopic = alignTopic({
+    question,
+    factAnswer,
+    proposedTopic,
+  }).topic;
   const narrationText = normalizeAnswerNarration(factAnswer);
 
   assertLength('question', question, 3, 200);
@@ -247,13 +253,13 @@ export function validateGeneratedAnswerV1(
   return {
     question,
     benchmark_id: benchmarkId && /^BQ-[0-9]{2}$/.test(benchmarkId) ? benchmarkId : null,
-    topic,
+    topic: alignedTopic,
     fact_answer: factAnswer,
     story_title: storyTitle,
     story_text: storyText,
     narration_text: narrationText,
     wonder_question: normalizeWonderQuestion(wonderQuestion),
-    scene_tags: normalizeSceneTags(value.scene_tags, topic),
+    scene_tags: normalizeSceneTags(value.scene_tags, alignedTopic),
     safety_flags: normalizeSafetyFlags(value.safety_flags),
     confidence: normalizeConfidence(value.confidence),
     source: normalizeSource(value.source, fallbacks.source),
@@ -269,7 +275,7 @@ export function validateFastAnswerV1(
   }
 
   const topicValue = getString(value, 'topic');
-  const topic = VALID_TOPICS.includes(topicValue as StoryTopic)
+  const proposedTopic = VALID_TOPICS.includes(topicValue as StoryTopic)
     ? (topicValue as StoryTopic)
     : fallbacks.topic;
   const question = getString(value, 'question') ?? fallbacks.question;
@@ -282,6 +288,11 @@ export function validateFastAnswerV1(
     throw new Error('Missing required field: fact_answer');
   }
 
+  const alignedTopic = alignTopic({
+    question,
+    factAnswer,
+    proposedTopic,
+  }).topic;
   const narrationText = normalizeAnswerNarration(factAnswer);
 
   assertLength('question', question, 3, 200);
@@ -292,11 +303,11 @@ export function validateFastAnswerV1(
   return {
     question,
     benchmark_id: benchmarkId && /^BQ-[0-9]{2}$/.test(benchmarkId) ? benchmarkId : null,
-    topic,
+    topic: alignedTopic,
     fact_answer: factAnswer,
     narration_text: narrationText,
     wonder_question: normalizeWonderQuestion(wonderQuestion),
-    scene_tags: normalizeSceneTags(value.scene_tags, topic),
+    scene_tags: normalizeSceneTags(value.scene_tags, alignedTopic),
     safety_flags: normalizeSafetyFlags(value.safety_flags),
     confidence: normalizeConfidence(value.confidence),
     source: normalizeSource(value.source, fallbacks.source),

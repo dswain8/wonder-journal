@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import db from './db';
 import { GeneratedAnswerV1, KidProfile } from './types';
 
-const CACHE_VERSION = 'answer-v2';
+const CACHE_VERSION = 'answer-v5-semantic-alignment';
 
 interface CachedAnswerRow {
   response_json: string;

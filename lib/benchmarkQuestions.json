@@ -4,174 +4,398 @@
     "question": "Why does the moon follow our car?",
     "expectedTopic": "space",
     "coreFact": "The moon is so far away that it looks almost fixed while nearby things rush past.",
-    "sceneTags": ["moon", "car", "night", "trees", "distance"]
+    "sceneTags": [
+      "moon",
+      "car",
+      "night",
+      "trees",
+      "distance"
+    ]
   },
   {
     "id": "BQ-02",
     "question": "Why do stars twinkle?",
     "expectedTopic": "space",
     "coreFact": "Starlight bends a little as it passes through moving air in Earth's atmosphere, so stars seem to twinkle.",
-    "sceneTags": ["stars", "night", "air", "rooftop", "sparkle"]
+    "sceneTags": [
+      "stars",
+      "night",
+      "air",
+      "rooftop",
+      "sparkle"
+    ]
   },
   {
     "id": "BQ-03",
     "question": "Why does the moon change shape?",
     "expectedTopic": "space",
     "coreFact": "The moon does not really change shape; we see different lit parts as it moves around Earth.",
-    "sceneTags": ["moon-phases", "night-sky", "sunlight", "calendar"]
+    "sceneTags": [
+      "moon-phases",
+      "night-sky",
+      "sunlight",
+      "calendar"
+    ]
   },
   {
     "id": "BQ-04",
     "question": "Why is the sky dark at night?",
     "expectedTopic": "space",
     "coreFact": "At night our part of Earth turns away from the sun, so the sky is no longer lit by sunlight.",
-    "sceneTags": ["earth", "sun", "night", "globe", "spinning"]
+    "sceneTags": [
+      "earth",
+      "sun",
+      "night",
+      "globe",
+      "spinning"
+    ]
   },
   {
     "id": "BQ-05",
     "question": "Why does the sun look bigger at sunset?",
     "expectedTopic": "space",
     "coreFact": "The sun is not actually much bigger; our eyes and brain can make it seem larger near the horizon.",
-    "sceneTags": ["sunset", "horizon", "field", "orange-sky"]
+    "sceneTags": [
+      "sunset",
+      "horizon",
+      "field",
+      "orange-sky"
+    ]
   },
   {
     "id": "BQ-06",
     "question": "Why do peacocks dance in the rain?",
     "expectedTopic": "animals",
     "coreFact": "Peacocks often spread their feathers and display during wet weather, especially as part of courtship behavior.",
-    "sceneTags": ["peacock", "rain", "field", "feathers", "monsoon"]
+    "sceneTags": [
+      "peacock",
+      "rain",
+      "field",
+      "feathers",
+      "monsoon"
+    ]
   },
   {
     "id": "BQ-07",
     "question": "Where does the rain go after a storm?",
     "expectedTopic": "weather",
     "coreFact": "Rainwater soaks into the ground, flows into streams and oceans, or evaporates back into the air.",
-    "sceneTags": ["puddle", "sun", "soil", "stream", "clouds"]
+    "sceneTags": [
+      "puddle",
+      "sun",
+      "soil",
+      "stream",
+      "clouds"
+    ]
   },
   {
     "id": "BQ-08",
     "question": "Why do rainbows have colors?",
     "expectedTopic": "weather",
     "coreFact": "Sunlight bends and spreads into different colors inside raindrops.",
-    "sceneTags": ["rainbow", "raindrops", "sunlight", "field"]
+    "sceneTags": [
+      "rainbow",
+      "raindrops",
+      "sunlight",
+      "field"
+    ]
   },
   {
     "id": "BQ-09",
     "question": "Why does thunder come after lightning?",
     "expectedTopic": "weather",
     "coreFact": "Light reaches us faster than sound, so we see lightning before we hear thunder.",
-    "sceneTags": ["storm", "lightning", "thunder", "window", "cloud"]
+    "sceneTags": [
+      "storm",
+      "lightning",
+      "thunder",
+      "window",
+      "cloud"
+    ]
   },
   {
     "id": "BQ-10",
     "question": "Why do leaves change color?",
     "expectedTopic": "nature",
     "coreFact": "In some seasons trees stop making as much green chlorophyll, so other colors become easier to see.",
-    "sceneTags": ["autumn", "leaves", "tree", "season", "colors"]
+    "sceneTags": [
+      "autumn",
+      "leaves",
+      "tree",
+      "season",
+      "colors"
+    ]
   },
   {
     "id": "BQ-11",
     "question": "Why do we get hiccups?",
     "expectedTopic": "body",
     "coreFact": "Hiccups happen when the diaphragm suddenly squeezes and the vocal cords close quickly.",
-    "sceneTags": ["body", "breathing", "diaphragm", "hiccup", "tummy"]
+    "sceneTags": [
+      "body",
+      "breathing",
+      "diaphragm",
+      "hiccup",
+      "tummy"
+    ]
   },
   {
     "id": "BQ-12",
     "question": "Why does my heart beat faster when I run?",
     "expectedTopic": "body",
     "coreFact": "The heart pumps faster during exercise to move more oxygen-rich blood to the body.",
-    "sceneTags": ["running", "heart", "playground", "body", "energy"]
+    "sceneTags": [
+      "running",
+      "heart",
+      "playground",
+      "body",
+      "energy"
+    ]
   },
   {
     "id": "BQ-13",
     "question": "Why do we need sleep?",
     "expectedTopic": "body",
     "coreFact": "Sleep helps the brain and body rest, grow, and organize what we learned.",
-    "sceneTags": ["sleep", "bed", "night", "brain", "dream"]
+    "sceneTags": [
+      "sleep",
+      "bed",
+      "night",
+      "brain",
+      "dream"
+    ]
   },
   {
     "id": "BQ-14",
     "question": "Why do tears come out when we cry?",
     "expectedTopic": "body",
     "coreFact": "Tears help protect and moisten the eyes, and emotional crying is one kind of tear response.",
-    "sceneTags": ["eyes", "tears", "feelings", "face"]
+    "sceneTags": [
+      "eyes",
+      "tears",
+      "feelings",
+      "face"
+    ]
   },
   {
     "id": "BQ-15",
     "question": "Why do we have bones?",
     "expectedTopic": "body",
     "coreFact": "Bones help give the body shape, protect important organs, and help us move.",
-    "sceneTags": ["bones", "skeleton", "body", "movement", "strength"]
+    "sceneTags": [
+      "bones",
+      "skeleton",
+      "body",
+      "movement",
+      "strength"
+    ]
   },
   {
     "id": "BQ-16",
     "question": "Why do butterflies have colors?",
     "expectedTopic": "animals",
     "coreFact": "Butterfly colors can help with finding mates, warning predators, blending in, or managing heat.",
-    "sceneTags": ["butterfly", "garden", "flowers", "wings", "color"]
+    "sceneTags": [
+      "butterfly",
+      "garden",
+      "flowers",
+      "wings",
+      "color"
+    ]
   },
   {
     "id": "BQ-17",
     "question": "Why do birds fly in a V?",
     "expectedTopic": "animals",
     "coreFact": "Some birds fly in a V to help save energy and stay coordinated during long trips.",
-    "sceneTags": ["birds", "migration", "sky", "flying", "formation"]
+    "sceneTags": [
+      "birds",
+      "migration",
+      "sky",
+      "flying",
+      "formation"
+    ]
   },
   {
     "id": "BQ-18",
     "question": "Why do cats purr?",
     "expectedTopic": "animals",
     "coreFact": "Cats purr for several reasons, including comfort, communication, and sometimes self-soothing.",
-    "sceneTags": ["cat", "purr", "home", "pet", "calm"]
+    "sceneTags": [
+      "cat",
+      "purr",
+      "home",
+      "pet",
+      "calm"
+    ]
   },
   {
     "id": "BQ-19",
     "question": "Why do elephants have trunks?",
     "expectedTopic": "animals",
     "coreFact": "Elephant trunks help them smell, breathe, drink, grab, and communicate.",
-    "sceneTags": ["elephant", "trunk", "water", "savanna", "animal-helper"]
+    "sceneTags": [
+      "elephant",
+      "trunk",
+      "water",
+      "savanna",
+      "animal-helper"
+    ]
   },
   {
     "id": "BQ-20",
     "question": "Why do spiders make webs?",
     "expectedTopic": "animals",
     "coreFact": "Many spiders make webs to catch food and sometimes to protect eggs or create a home base.",
-    "sceneTags": ["spider", "web", "dew", "garden", "insect"]
+    "sceneTags": [
+      "spider",
+      "web",
+      "dew",
+      "garden",
+      "insect"
+    ]
   },
   {
     "id": "BQ-21",
     "question": "Why does ice melt?",
     "expectedTopic": "weather",
     "coreFact": "Ice melts when it gets enough heat energy to change from solid water to liquid water.",
-    "sceneTags": ["ice", "sun", "water", "melting", "table"]
+    "sceneTags": [
+      "ice",
+      "sun",
+      "water",
+      "melting",
+      "table"
+    ]
   },
   {
     "id": "BQ-22",
     "question": "Why does popcorn pop?",
     "expectedTopic": "food",
     "coreFact": "Water trapped inside the kernel turns to steam, pressure builds, and the kernel bursts open.",
-    "sceneTags": ["popcorn", "kitchen", "steam", "heat", "kernel"]
+    "sceneTags": [
+      "popcorn",
+      "kitchen",
+      "steam",
+      "heat",
+      "kernel"
+    ]
   },
   {
     "id": "BQ-23",
     "question": "Why do shadows move?",
     "expectedTopic": "colors",
     "coreFact": "Shadows change when the light source or the object moves; outdoors, the sun's changing position makes shadows shift.",
-    "sceneTags": ["shadow", "sun", "playground", "light", "ground"]
+    "sceneTags": [
+      "shadow",
+      "sun",
+      "playground",
+      "light",
+      "ground"
+    ]
   },
   {
     "id": "BQ-24",
     "question": "Why do bubbles shine with colors?",
     "expectedTopic": "colors",
     "coreFact": "Light reflecting from the thin soap film can interfere in ways that make rainbow-like colors appear.",
-    "sceneTags": ["bubbles", "sunlight", "rainbow", "yard", "soap"]
+    "sceneTags": [
+      "bubbles",
+      "sunlight",
+      "rainbow",
+      "yard",
+      "soap"
+    ]
   },
   {
     "id": "BQ-25",
     "question": "Why does a magnet stick to the fridge?",
     "expectedTopic": "wonder",
     "coreFact": "Magnets stick to some metals, like steel, because magnetic forces pull certain materials together.",
-    "sceneTags": ["magnet", "fridge", "kitchen", "steel", "shapes"]
+    "sceneTags": [
+      "magnet",
+      "fridge",
+      "kitchen",
+      "steel",
+      "shapes"
+    ]
+  },
+  {
+    "id": "BQ-26",
+    "question": "Who is Krishna?",
+    "expectedTopic": "mythology",
+    "coreFact": "Krishna is a beloved figure in Hindu stories, often remembered as wise, playful, kind, and connected with music and the flute.",
+    "sceneTags": [
+      "krishna",
+      "flute",
+      "peacock-feather",
+      "music",
+      "story"
+    ]
+  },
+  {
+    "id": "BQ-27",
+    "question": "Who is Hanuman?",
+    "expectedTopic": "mythology",
+    "coreFact": "Hanuman is a brave and loyal figure in Hindu stories, remembered for helping Rama with strength, devotion, and kindness.",
+    "sceneTags": [
+      "hanuman",
+      "rama",
+      "brave",
+      "helper",
+      "story"
+    ]
+  },
+  {
+    "id": "BQ-28",
+    "question": "Why did dinosaurs disappear?",
+    "expectedTopic": "animals",
+    "coreFact": "Most dinosaurs disappeared long ago after a huge asteroid hit Earth and changed the climate, making it hard for them to survive.",
+    "sceneTags": [
+      "dinosaur",
+      "asteroid",
+      "earth",
+      "ancient",
+      "climate"
+    ]
+  },
+  {
+    "id": "BQ-29",
+    "question": "Why do we like music?",
+    "expectedTopic": "music",
+    "coreFact": "Music has patterns of sound and rhythm that our brains can enjoy, remember, and connect with feelings.",
+    "sceneTags": [
+      "music",
+      "rhythm",
+      "sound",
+      "brain",
+      "feelings"
+    ]
+  },
+  {
+    "id": "BQ-30",
+    "question": "Why do people dance?",
+    "expectedTopic": "music",
+    "coreFact": "People dance to music, rhythm, feelings, celebration, and sometimes to tell a story with their bodies.",
+    "sceneTags": [
+      "dance",
+      "music",
+      "rhythm",
+      "celebration",
+      "movement"
+    ]
+  },
+  {
+    "id": "BQ-31",
+    "question": "Why is the sky blue?",
+    "expectedTopic": "colors",
+    "coreFact": "The sky looks blue because tiny air molecules scatter blue sunlight more than many other colors.",
+    "sceneTags": [
+      "sky",
+      "blue",
+      "sunlight",
+      "air",
+      "color"
+    ]
   }
 ]

@@ -46,10 +46,11 @@ RESPONSE FORMAT (STRICT):
 - If you cannot comply, return {}.
 
 JSON STRUCTURE:
-{"question": "...", "benchmark_id": null, "topic": "animals|space|nature|body|food|weather|ocean|transport|colors|wonder", "fact_answer": "...", "story_title": "...", "story_text": "...", "narration_text": "...", "wonder_question": "I wonder...", "scene_tags": ["..."], "confidence": 0.9}
+{"question": "...", "benchmark_id": null, "topic": "animals|space|nature|body|food|weather|ocean|transport|colors|mythology|culture|history|people|music|feelings|wonder", "fact_answer": "...", "story_title": "...", "story_text": "...", "narration_text": "...", "wonder_question": "I wonder...", "scene_tags": ["..."], "confidence": 0.9}
 
 IMPORTANT:
-- The "topic" must be exactly one of: animals, space, nature, body, food, weather, ocean, transport, colors, wonder.
+- The "topic" must be exactly one of: animals, space, nature, body, food, weather, ocean, transport, colors, mythology, culture, history, people, music, feelings, wonder.
+- If unsure, use "wonder". Never guess body, food, or transport unless the question clearly asks about those.
 - The "fact_answer" must be true even if the story is hidden.
 - The "story_text" must be a story-answer. It should make the fact feel visual, fun, and easy to remember.
 - The "narration_text" must be an answer-first spoken version of "fact_answer".
@@ -314,6 +315,71 @@ export function classifyTopicByKeywords(question: string): StoryTopic {
       'quiet',
       'sing',
       'noise',
+    ],
+    mythology: [
+      'krishna',
+      'hanuman',
+      'rama',
+      'ram',
+      'sita',
+      'gargi',
+      'nachiketa',
+      'nachiket',
+      'mythology',
+      'god',
+      'goddess',
+      'deity',
+      'flute',
+      'mahabharata',
+      'ramayana',
+    ],
+    culture: [
+      'diwali',
+      'holi',
+      'festival',
+      'rangoli',
+      'temple',
+      'india',
+      'indian',
+      'tradition',
+    ],
+    history: [
+      'history',
+      'ancient',
+      'king',
+      'queen',
+      'emperor',
+      'freedom',
+      'old days',
+    ],
+    people: [
+      'who is',
+      'who was',
+      'person',
+      'people',
+      'scientist',
+      'artist',
+      'teacher',
+    ],
+    music: [
+      'music',
+      'song',
+      'sing',
+      'dance',
+      'dancing',
+      'flute',
+      'drum',
+      'tabla',
+    ],
+    feelings: [
+      'feel',
+      'feeling',
+      'happy',
+      'sad',
+      'angry',
+      'scared',
+      'brave',
+      'love',
     ],
   };
 

@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { IMAGE_LIBRARY } from './imageLibrary';
-import { ImageEntry } from './types';
+import { ImageEntry, StoryTopic, VALID_TOPICS } from './types';
+import { alignTopic } from './semanticAlignment';
 
 const imageExistsCache = new Map<string, boolean>();
 
@@ -21,6 +22,7 @@ function imageExists(imagePath: string): boolean {
 export function matchImage(
   question: string,
   topic: string,
+  factAnswer = '',
 ): ImageEntry | null {
   const q = question.toLowerCase();
   const words = q
@@ -28,7 +30,24 @@ export function matchImage(
     .map((word) => word.trim())
     .filter(Boolean);
 
-  let candidates = IMAGE_LIBRARY.filter((img) => img.category === topic);
+  const alignedTopic = alignTopic({
+    question,
+    factAnswer,
+    proposedTopic: VALID_TOPICS.includes(topic as StoryTopic)
+      ? (topic as StoryTopic)
+      : 'wonder',
+  }).topic;
+  const safeTopic =
+    alignedTopic === 'mythology' ||
+    alignedTopic === 'culture' ||
+    alignedTopic === 'history' ||
+    alignedTopic === 'people' ||
+    alignedTopic === 'music' ||
+    alignedTopic === 'feelings'
+      ? 'wonder'
+      : alignedTopic;
+
+  let candidates = IMAGE_LIBRARY.filter((img) => img.category === safeTopic);
 
   if (candidates.length === 0) {
     candidates = IMAGE_LIBRARY.filter((img) => img.category === 'wonder');
@@ -55,6 +74,14 @@ export function matchImage(
 
   if (scored[0]?.score > 0) {
     return scored[0].img;
+  }
+
+  if (safeTopic !== 'wonder') {
+    const wonderCandidates = IMAGE_LIBRARY.filter(
+      (img) => img.category === 'wonder' && imageExists(img.path),
+    );
+
+    return wonderCandidates[0] ?? null;
   }
 
   return candidates[Math.floor(Math.random() * candidates.length)] ?? null;

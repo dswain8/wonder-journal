@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getTryTogetherPrompt } from '@/lib/activity';
 import { AnswerSource, WonderGuideId } from '@/lib/types';
 import {
   StoryExperience,
@@ -23,6 +24,7 @@ interface StoryCardProps {
   topic?: string;
   childName?: string;
   guide?: WonderGuideId;
+  activityPrompt?: string | null;
   storyStatus?: 'ready' | 'generating' | 'failed';
   isStoryGenerating?: boolean;
   onAskAnother?: () => void;
@@ -87,6 +89,42 @@ const TOPIC_SCENES: Record<
     gradient: 'linear-gradient(180deg, #5a2b75 0%, #b55aa0 56%, #ffd58e 100%)',
     accent: '#fff1b0',
     foreground: '#351844',
+  },
+  mythology: {
+    label: 'Story from long ago',
+    gradient: 'linear-gradient(180deg, #241643 0%, #684177 58%, #d9953d 100%)',
+    accent: '#ffe28a',
+    foreground: '#261634',
+  },
+  culture: {
+    label: 'Culture clue',
+    gradient: 'linear-gradient(180deg, #3b1632 0%, #a24963 58%, #f2bd69 100%)',
+    accent: '#fff0b5',
+    foreground: '#34152a',
+  },
+  history: {
+    label: 'Old story clue',
+    gradient: 'linear-gradient(180deg, #2d2440 0%, #77583f 58%, #dec38a 100%)',
+    accent: '#fff0b5',
+    foreground: '#221b2e',
+  },
+  people: {
+    label: 'People story',
+    gradient: 'linear-gradient(180deg, #20304f 0%, #6a4c8f 58%, #e9b879 100%)',
+    accent: '#fff0b5',
+    foreground: '#17243e',
+  },
+  music: {
+    label: 'Music clue',
+    gradient: 'linear-gradient(180deg, #2d1a4a 0%, #8b3f78 58%, #efb85e 100%)',
+    accent: '#fff2bc',
+    foreground: '#221036',
+  },
+  feelings: {
+    label: 'Feeling clue',
+    gradient: 'linear-gradient(180deg, #25304f 0%, #6d5aa5 58%, #f1c48e 100%)',
+    accent: '#fff2bc',
+    foreground: '#181f38',
   },
   wonder: {
     label: 'Wonder trail',
@@ -405,27 +443,6 @@ function MomentGlyph({ glyph }: { glyph: StoryMoment['glyph'] }) {
       <div className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-[#6d49a5]" />
     </div>
   );
-}
-
-const TRY_THIS_PROMPTS: Record<string, string> = {
-  animals: 'Look for one animal nearby or in a book. What is one clue its body gives you about how it lives?',
-  space: 'Tonight, look at one close thing and one faraway thing. Move your head slowly and see which one seems to move more.',
-  nature: 'Pick one leaf, flower, seed, or stone. Look closely and tell each other one tiny detail you did not notice before.',
-  body: 'Put a hand on your chest, then do ten little jumps. What changed?',
-  food: 'Smell one food before tasting it. Does your nose give your tongue a clue?',
-  weather: 'Look out of the window and name three sky clues: cloud, wind, light, or color.',
-  ocean: 'Fill a bowl with water and gently blow across it. Can you make tiny waves?',
-  transport: 'Roll a toy, a ball, or a pencil. What shape helps it move?',
-  colors: 'Hold something colorful near sunlight. Where do you see the brightest color?',
-  wonder: 'Pick one thing in the room and ask: what is it made of, and why is it shaped that way?',
-};
-
-function getTryThisPrompt(topic: string, specialExperience: StoryExperience | null): string {
-  if (specialExperience?.key === 'moon-car') {
-    return 'Next time you are in a car, look at a nearby pole and then the moon. The pole jumps away fast. The moon looks steady. That is the clue.';
-  }
-
-  return TRY_THIS_PROMPTS[topic] ?? TRY_THIS_PROMPTS.wonder;
 }
 
 function QuickClueCards({ moments }: { moments: StoryMoment[] }) {
@@ -769,6 +786,12 @@ function buildVisualTags(topic: string, sceneTags?: string[] | null): string[] {
     ocean: ['wave', 'fish', 'shell'],
     transport: ['car', 'road', 'wheel'],
     colors: ['rainbow', 'paint', 'light'],
+    mythology: ['story', 'flute', 'spark'],
+    culture: ['festival', 'pattern', 'lamp'],
+    history: ['book', 'map', 'lamp'],
+    people: ['person', 'spark', 'book'],
+    music: ['music', 'drum', 'spark'],
+    feelings: ['heart', 'spark', 'cloud'],
     wonder: ['lamp', 'spark', 'book'],
   };
   const normalizedTags = (sceneTags ?? [])
@@ -835,6 +858,17 @@ function SceneGlyph({
         <div className="absolute bottom-2 left-1 h-12 w-[4.5rem] rounded-t-full border-[9px] border-b-0 border-[#ff7777]" />
         <div className="absolute bottom-2 left-3 h-9 w-14 rounded-t-full border-[8px] border-b-0 border-[#ffd36b]" />
         <div className="absolute bottom-2 left-5 h-6 w-10 rounded-t-full border-[7px] border-b-0 border-[#5bc9c2]" />
+      </div>
+    );
+  }
+
+  if (normalized.includes('flute') || normalized.includes('music') || normalized.includes('drum')) {
+    return (
+      <div className="relative h-16 w-20" style={{ transform: offset }}>
+        <div className="absolute left-2 top-7 h-3 w-16 -rotate-12 rounded-full bg-[#f3c056]" />
+        <div className="absolute left-5 top-7 h-2 w-2 rounded-full bg-[#5b2a6b]" />
+        <div className="absolute left-9 top-6 h-2 w-2 rounded-full bg-[#5b2a6b]" />
+        <div className="absolute right-0 top-1 text-2xl text-[#fff2bc]">♪</div>
       </div>
     );
   }
@@ -912,6 +946,7 @@ export default function StoryCard({
   topic = 'wonder',
   childName,
   guide = 'gargi',
+  activityPrompt,
   storyStatus = 'ready',
   isStoryGenerating = false,
   onAskAnother,
@@ -939,7 +974,16 @@ export default function StoryCard({
     specialExperience?.fact ??
     factAnswer ??
     `${childName || 'Your child'} asked a beautiful question. This answer needs one more careful look, but the wonder is saved.`;
-  const tryThisPrompt = getTryThisPrompt(topic, specialExperience);
+  const tryThisPrompt =
+    specialExperience?.key === 'moon-car'
+      ? 'Next time you are in a car, look at a nearby pole and then the moon. The pole jumps away fast. The moon looks steady. That is the clue.'
+      : activityPrompt ??
+        getTryTogetherPrompt({
+          topic,
+          question,
+          factAnswer: answerText,
+          sceneTags,
+        });
   const hasStory = story.trim().length > 0 && storyStatus === 'ready';
 
   const narrationText = useMemo(() => {
