@@ -1,6 +1,7 @@
 import schema from './schemas/generated-answer-v1.schema.json';
 import {
   AnswerSource,
+  FastAnswerV1,
   GeneratedAnswerV1,
   GeneratedStory,
   SAFETY_FLAGS,
@@ -250,6 +251,49 @@ export function validateGeneratedAnswerV1(
     fact_answer: factAnswer,
     story_title: storyTitle,
     story_text: storyText,
+    narration_text: narrationText,
+    wonder_question: normalizeWonderQuestion(wonderQuestion),
+    scene_tags: normalizeSceneTags(value.scene_tags, topic),
+    safety_flags: normalizeSafetyFlags(value.safety_flags),
+    confidence: normalizeConfidence(value.confidence),
+    source: normalizeSource(value.source, fallbacks.source),
+  };
+}
+
+export function validateFastAnswerV1(
+  value: unknown,
+  fallbacks: ValidationFallbacks,
+): FastAnswerV1 {
+  if (!isRecord(value)) {
+    throw new Error('Generated fast answer must be an object');
+  }
+
+  const topicValue = getString(value, 'topic');
+  const topic = VALID_TOPICS.includes(topicValue as StoryTopic)
+    ? (topicValue as StoryTopic)
+    : fallbacks.topic;
+  const question = getString(value, 'question') ?? fallbacks.question;
+  const factAnswer = getString(value, 'fact_answer');
+  const wonderQuestion =
+    getString(value, 'wonder_question') ?? 'I wonder what else we can notice?';
+  const benchmarkId = getString(value, 'benchmark_id');
+
+  if (!factAnswer) {
+    throw new Error('Missing required field: fact_answer');
+  }
+
+  const narrationText = normalizeAnswerNarration(factAnswer);
+
+  assertLength('question', question, 3, 200);
+  assertLength('fact_answer', factAnswer, 20, 220);
+  assertLength('narration_text', narrationText, 20, 500);
+  assertLength('wonder_question', wonderQuestion, 12, 140);
+
+  return {
+    question,
+    benchmark_id: benchmarkId && /^BQ-[0-9]{2}$/.test(benchmarkId) ? benchmarkId : null,
+    topic,
+    fact_answer: factAnswer,
     narration_text: narrationText,
     wonder_question: normalizeWonderQuestion(wonderQuestion),
     scene_tags: normalizeSceneTags(value.scene_tags, topic),

@@ -1,0 +1,186 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { scoreGeneratedAnswerQuality } from '@/lib/answerQuality';
+import { lookupBenchmark } from '@/lib/benchmarks';
+import { generateDummyAnswer } from '@/lib/dummyStory';
+import { createSensitiveQuestionAnswer } from '@/lib/fallbackAnswer';
+import { matchImage } from '@/lib/matchImage';
+import { getOllamaConfig } from '@/lib/ollama';
+import { generateFastAnswer, scoreFastAnswerQuality } from '@/lib/progressiveAnswer';
+import { detectSensitiveQuestion } from '@/lib/safety';
+import { validateQuestion, getProfileFromBody, nowMs } from '@/lib/apiRequest';
+import {
+  buildStoryCacheKey,
+  getCachedAnswer,
+} from '@/lib/storyCache';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const useDummyStories = process.env.USE_DUMMY_STORIES === 'true';
+
+export async function POST(request: NextRequest) {
+  const requestStartedAt = nowMs();
+
+  try {
+    const body = (await request.json()) as Record<string, unknown>;
+    const questionResult = validateQuestion(body.question);
+
+    if (!questionResult.ok) {
+      return NextResponse.json(
+        { error: questionResult.error },
+        { status: questionResult.status },
+      );
+    }
+
+    const cleanQuestion = questionResult.question;
+    const profile = getProfileFromBody(body);
+    const model = useDummyStories ? 'dummy' : getOllamaConfig().model;
+    const cacheStartedAt = nowMs();
+    const cacheKey = buildStoryCacheKey(
+      cleanQuestion,
+      profile,
+      model,
+      useDummyStories ? 'dummy' : 'ollama',
+    );
+    const cachedStory = getCachedAnswer(cacheKey.hash);
+    const cacheMs = nowMs() - cacheStartedAt;
+
+    if (cachedStory) {
+      const answerData = cachedStory.answerData;
+      const imageStartedAt = nowMs();
+      const image = matchImage(cleanQuestion, answerData.topic);
+      const imageMs = nowMs() - imageStartedAt;
+
+      return NextResponse.json({
+        id: 0,
+        title: answerData.story_title,
+        story: answerData.story_text,
+        fact_answer: answerData.fact_answer,
+        narration_text: answerData.narration_text,
+        wonder_question: answerData.wonder_question,
+        image_url: image?.path ?? null,
+        topic: answerData.topic,
+        question: cleanQuestion,
+        scene_tags: answerData.scene_tags,
+        safety_flags: answerData.safety_flags,
+        confidence: answerData.confidence,
+        source: answerData.source,
+        quality_score: cachedStory.qualityScore,
+        saved: false,
+        generation_mode: 'cache',
+        attempts: cachedStory.attempts,
+        cache_hit: true,
+        story_status: 'ready',
+        model,
+        timing: {
+          cache_ms: cacheMs,
+          answer_ms: 0,
+          image_ms: imageMs,
+          total_ms: nowMs() - requestStartedAt,
+        },
+        child_name: profile.childName,
+        child_age: profile.childAge,
+        guide: profile.guide,
+      });
+    }
+
+    const sensitiveQuestion = detectSensitiveQuestion(cleanQuestion);
+    const answerStartedAt = nowMs();
+    let answerData;
+    let generationMode: 'dummy' | 'ollama' | 'fallback';
+    let attempts = 1;
+    let qualityScore = 0.75;
+
+    if (sensitiveQuestion.isSensitive) {
+      const fallback = createSensitiveQuestionAnswer(
+        cleanQuestion,
+        profile,
+        sensitiveQuestion.safetyFlags,
+      );
+      answerData = fallback;
+      generationMode = 'fallback';
+      attempts = 0;
+      qualityScore = 0.2;
+    } else if (useDummyStories) {
+      const dummy = generateDummyAnswer(cleanQuestion, profile);
+      answerData = dummy;
+      generationMode = 'dummy';
+      qualityScore = scoreGeneratedAnswerQuality(dummy, lookupBenchmark(cleanQuestion));
+    } else {
+      const fastAnswer = await generateFastAnswer(cleanQuestion, profile);
+      answerData = {
+        ...fastAnswer,
+        story_title: 'Story coming soon',
+        story_text: '',
+      };
+      generationMode = 'ollama';
+      qualityScore = scoreFastAnswerQuality(fastAnswer);
+    }
+
+    const answerMs = nowMs() - answerStartedAt;
+    const imageStartedAt = nowMs();
+    const image = matchImage(cleanQuestion, answerData.topic);
+    const imageMs = nowMs() - imageStartedAt;
+    const storyStatus =
+      generationMode === 'dummy' || generationMode === 'fallback'
+        ? 'ready'
+        : 'generating';
+
+    return NextResponse.json({
+      id: 0,
+      title: answerData.story_title,
+      story: answerData.story_text,
+      fact_answer: answerData.fact_answer,
+      narration_text: answerData.narration_text,
+      wonder_question: answerData.wonder_question,
+      image_url: image?.path ?? null,
+      topic: answerData.topic,
+      question: cleanQuestion,
+      scene_tags: answerData.scene_tags,
+      safety_flags: answerData.safety_flags,
+      confidence: answerData.confidence,
+      source: answerData.source,
+      quality_score: qualityScore,
+      saved: false,
+      generation_mode: generationMode,
+      attempts,
+      cache_hit: false,
+      story_status: storyStatus,
+      model,
+      timing: {
+        cache_ms: cacheMs,
+        answer_ms: answerMs,
+        image_ms: imageMs,
+        total_ms: nowMs() - requestStartedAt,
+      },
+      child_name: profile.childName,
+      child_age: profile.childAge,
+      guide: profile.guide,
+    });
+  } catch (error: unknown) {
+    console.error('Fast answer error:', error);
+    const message = error instanceof Error ? error.message.toLowerCase() : '';
+
+    if (
+      message.includes('econnrefused') ||
+      message.includes('fetch failed') ||
+      message.includes('timed out') ||
+      message.includes('timeout') ||
+      message.includes('aborted')
+    ) {
+      return NextResponse.json(
+        {
+          error: message.includes('timed out') || message.includes('timeout')
+            ? 'Ollama is taking too long. Please try again or use a smaller local model.'
+            : 'Cannot connect to Ollama. Please make sure Ollama is running.',
+        },
+        { status: 503 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'The answer got a bit jumbled. Please try again!' },
+      { status: 422 },
+    );
+  }
+}

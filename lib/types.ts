@@ -91,6 +91,19 @@ export interface GeneratedAnswerV1 {
   source: AnswerSource;
 }
 
+export interface FastAnswerV1 {
+  question: string;
+  benchmark_id: string | null;
+  topic: StoryTopic;
+  fact_answer: string;
+  narration_text: string;
+  wonder_question: string;
+  scene_tags: string[];
+  safety_flags: SafetyFlag[];
+  confidence: number;
+  source: AnswerSource;
+}
+
 export interface GenerateResponse {
   id: number;
   title: string;
@@ -110,12 +123,45 @@ export interface GenerateResponse {
   generation_mode: 'dummy' | 'ollama' | 'fallback';
   attempts: number;
   cache_hit?: boolean;
+  story_status?: 'ready' | 'generating' | 'failed';
   model?: string;
   timing?: {
     cache_ms: number;
     generation_ms: number;
     image_ms: number;
     persist_ms: number;
+    total_ms: number;
+  };
+  child_name: string;
+  child_age: number;
+  guide: WonderGuideId;
+}
+
+export interface FastAnswerResponse {
+  id: number;
+  title: string;
+  story: string;
+  fact_answer: string;
+  narration_text: string;
+  wonder_question: string;
+  image_url: string | null;
+  topic: StoryTopic;
+  question: string;
+  scene_tags: string[];
+  safety_flags: SafetyFlag[];
+  confidence: number;
+  source: AnswerSource;
+  quality_score: number;
+  saved: boolean;
+  generation_mode: 'dummy' | 'ollama' | 'fallback' | 'cache';
+  attempts: number;
+  cache_hit?: boolean;
+  story_status: 'ready' | 'generating' | 'failed';
+  model?: string;
+  timing?: {
+    cache_ms: number;
+    answer_ms: number;
+    image_ms: number;
     total_ms: number;
   };
   child_name: string;

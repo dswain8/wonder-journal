@@ -23,6 +23,8 @@ interface StoryCardProps {
   topic?: string;
   childName?: string;
   guide?: WonderGuideId;
+  storyStatus?: 'ready' | 'generating' | 'failed';
+  isStoryGenerating?: boolean;
   onAskAnother?: () => void;
 }
 
@@ -910,6 +912,8 @@ export default function StoryCard({
   topic = 'wonder',
   childName,
   guide = 'gargi',
+  storyStatus = 'ready',
+  isStoryGenerating = false,
   onAskAnother,
 }: StoryCardProps) {
   const [activeNarration, setActiveNarration] = useState<NarrationMode | null>(null);
@@ -936,6 +940,7 @@ export default function StoryCard({
     factAnswer ??
     `${childName || 'Your child'} asked a beautiful question. This answer needs one more careful look, but the wonder is saved.`;
   const tryThisPrompt = getTryThisPrompt(topic, specialExperience);
+  const hasStory = story.trim().length > 0 && storyStatus === 'ready';
 
   const narrationText = useMemo(() => {
     return buildNarrationScript({
@@ -952,8 +957,12 @@ export default function StoryCard({
   ]);
 
   const storyNarrationText = useMemo(() => {
+    if (!hasStory) {
+      return '';
+    }
+
     return normalizeNarrationText(`${title}. ${story}`);
-  }, [story, title]);
+  }, [hasStory, story, title]);
 
   const recommendedVoice = useMemo(() => {
     return pickGuideVoice(voices, guide);
@@ -997,7 +1006,9 @@ export default function StoryCard({
   const isStoryPlaying = isStoryNarrating && !isNarrationPaused;
   const answerReadSeconds = estimateReadSeconds(narrationText, narrationStyle.rate, 8);
   const storyReadRate = Math.max(0.72, narrationStyle.rate * 0.9);
-  const storyReadSeconds = estimateReadSeconds(storyNarrationText, storyReadRate, 24);
+  const storyReadSeconds = hasStory
+    ? estimateReadSeconds(storyNarrationText, storyReadRate, 24)
+    : 0;
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -1190,6 +1201,10 @@ export default function StoryCard({
 
     if (activeNarration) {
       stopNarration(true);
+    }
+
+    if (mode === 'story' && !hasStory) {
+      return;
     }
 
     const script = mode === 'story' ? storyNarrationText : narrationText;
@@ -1419,27 +1434,59 @@ export default function StoryCard({
           <div className="mt-5 overflow-hidden rounded-[26px] bg-white/6 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.14)]">
             <button
               type="button"
-              onClick={() => setShowStory((current) => !current)}
+              onClick={() => {
+                if (hasStory) {
+                  setShowStory((current) => !current);
+                }
+              }}
               className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
               aria-expanded={showStory}
+              disabled={!hasStory}
             >
               <div>
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/45">
                   Story answer
                 </p>
                 <p className="mt-1 text-sm font-bold text-[var(--wj-ivory)]">
-                  {showStory ? 'Hide the story answer' : 'Show the fun story answer'}
+                  {hasStory
+                    ? showStory
+                      ? 'Hide the story answer'
+                      : 'Show the fun story answer'
+                    : isStoryGenerating || storyStatus === 'generating'
+                      ? `${guideName} is turning this into a story`
+                      : 'Story answer is not ready yet'}
                 </p>
+                {!hasStory ? (
+                  <p className="mt-1 text-xs leading-5 text-white/48">
+                    You can read or listen to the short answer now.
+                  </p>
+                ) : null}
               </div>
               <span
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl font-bold text-[var(--wj-ivory)] transition"
-                style={{ transform: showStory ? 'rotate(45deg)' : 'rotate(0deg)' }}
+                style={{
+                  transform: showStory ? 'rotate(45deg)' : 'rotate(0deg)',
+                  opacity: hasStory ? 1 : 0.55,
+                }}
               >
-                +
+                {hasStory ? '+' : '…'}
               </span>
             </button>
 
-            {showStory ? (
+            {!hasStory && (isStoryGenerating || storyStatus === 'generating') ? (
+              <div className="px-5 pb-5">
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full w-1/2 animate-[wjStoryWait_1.4s_ease-in-out_infinite] rounded-full"
+                    style={{
+                      background: `linear-gradient(90deg, ${accent}, #F3C056)`,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {showStory && hasStory ? (
               <div className="wj-parchment wj-page-in rounded-t-[26px] px-5 py-5">
                 <h2 className="wj-display text-[28px] leading-[1.12] text-[var(--wj-ink)]">
                   {title}

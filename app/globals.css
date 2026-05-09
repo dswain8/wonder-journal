@@ -282,6 +282,16 @@ body {
   }
 }
 
+@keyframes wjStoryWait {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(220%);
+  }
+}
+
 .wj-float-a {
   animation: wj-float-a 6s ease-in-out infinite;
 }

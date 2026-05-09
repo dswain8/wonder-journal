@@ -49,6 +49,7 @@ function sanitizeProfile(profile: AppProfile): AppProfile {
 export default function Home() {
   const [profile, setProfile] = useState<AppProfile>(DEFAULT_APP_PROFILE);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStoryGenerating, setIsStoryGenerating] = useState(false);
   const [story, setStory] = useState<GenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeQuestion, setActiveQuestion] = useState('');
@@ -80,12 +81,13 @@ export default function Home() {
 
   const handleAsk = async (question: string) => {
     setIsLoading(true);
+    setIsStoryGenerating(false);
     setError(null);
     setStory(null);
     setActiveQuestion(question);
 
     try {
-      const response = await fetch('/api/generate', {
+      const answerResponse = await fetch('/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -97,15 +99,73 @@ export default function Home() {
         }),
       });
 
-      const data = await response.json();
+      const answerData = await answerResponse.json();
 
-      if (!response.ok) {
-        const errorData = data as { error?: string };
+      if (!answerResponse.ok) {
+        const errorData = answerData as { error?: string };
         setError(errorData.error || 'Something went wrong');
         return;
       }
 
-      setStory(data as GenerateResponse);
+      const fastAnswer = answerData as GenerateResponse;
+      setStory(fastAnswer);
+      setIsLoading(false);
+
+      if (fastAnswer.story_status !== 'generating') {
+        return;
+      }
+
+      setIsStoryGenerating(true);
+
+      try {
+        const storyResponse = await fetch('/api/story', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: fastAnswer.question,
+            benchmark_id: null,
+            topic: fastAnswer.topic,
+            fact_answer: fastAnswer.fact_answer,
+            narration_text: fastAnswer.narration_text,
+            wonder_question: fastAnswer.wonder_question,
+            scene_tags: fastAnswer.scene_tags,
+            safety_flags: fastAnswer.safety_flags,
+            confidence: fastAnswer.confidence,
+            source: fastAnswer.source,
+            childName: profile.childName,
+            childAge: profile.childAge,
+            storyLead: profile.storyLead,
+            guide: profile.guide,
+          }),
+        });
+
+        const storyData = await storyResponse.json();
+
+        if (!storyResponse.ok) {
+          setStory((currentStory) =>
+            currentStory
+              ? {
+                  ...currentStory,
+                  story_status: 'failed',
+                }
+              : currentStory,
+          );
+          return;
+        }
+
+        setStory(storyData as GenerateResponse);
+      } catch {
+        setStory((currentStory) =>
+          currentStory
+            ? {
+                ...currentStory,
+                story_status: 'failed',
+              }
+            : currentStory,
+        );
+      } finally {
+        setIsStoryGenerating(false);
+      }
     } catch {
       setError('Could not connect. Is Ollama running?');
     } finally {
@@ -206,7 +266,8 @@ export default function Home() {
             <button
               type="button"
               onClick={() => {
-                setStory(null);
+            setStory(null);
+                setIsStoryGenerating(false);
                 setError(null);
                 setActiveQuestion('');
               }}
@@ -256,8 +317,11 @@ export default function Home() {
             topic={story.topic}
             childName={story.child_name}
             guide={profile.guide}
+            storyStatus={story.story_status}
+            isStoryGenerating={isStoryGenerating}
             onAskAnother={() => {
               setStory(null);
+              setIsStoryGenerating(false);
               setError(null);
               setActiveQuestion('');
             }}
