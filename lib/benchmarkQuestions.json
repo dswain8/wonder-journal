@@ -397,5 +397,96 @@
       "air",
       "color"
     ]
+  },
+  {
+    "id": "BQ-32",
+    "question": "Why does Krishna play the flute?",
+    "expectedTopic": "mythology",
+    "coreFact": "In many Hindu stories, Krishna playing the flute is a symbol of joy, beauty, love, and music that draws people and animals close.",
+    "sceneTags": [
+      "krishna",
+      "flute",
+      "music",
+      "joy",
+      "story"
+    ]
+  },
+  {
+    "id": "BQ-33",
+    "question": "Who is Ganesha?",
+    "expectedTopic": "mythology",
+    "coreFact": "Ganesha is a beloved Hindu deity often remembered as wise, kind, and a remover of obstacles at the start of something new.",
+    "sceneTags": [
+      "ganesha",
+      "wisdom",
+      "kind",
+      "new-start",
+      "story"
+    ]
+  },
+  {
+    "id": "BQ-34",
+    "question": "Why do we dream?",
+    "expectedTopic": "body",
+    "coreFact": "Dreams happen while the brain is active during sleep, mixing memories, feelings, and ideas into pictures or stories.",
+    "sceneTags": [
+      "sleep",
+      "dream",
+      "brain",
+      "night",
+      "bed"
+    ]
+  },
+  {
+    "id": "BQ-35",
+    "question": "Why do people celebrate Diwali?",
+    "expectedTopic": "culture",
+    "coreFact": "People celebrate Diwali as a festival of lights, joy, family, and the idea that light can overcome darkness.",
+    "sceneTags": [
+      "diwali",
+      "lights",
+      "family",
+      "festival",
+      "lamp"
+    ]
+  },
+  {
+    "id": "BQ-36",
+    "question": "What are some famous flowers?",
+    "expectedTopic": "nature",
+    "coreFact": "Some famous flowers are roses, lotuses, sunflowers, tulips, jasmine, and marigolds.",
+    "sceneTags": [
+      "flowers",
+      "rose",
+      "lotus",
+      "sunflower",
+      "garden"
+    ]
+  },
+  {
+    "id": "BQ-37",
+    "question": "How does a seed become a plant?",
+    "expectedTopic": "nature",
+    "coreFact": "A seed becomes a plant when it gets water, air, warmth, and light, then grows roots, a stem, and leaves.",
+    "sceneTags": [
+      "seed",
+      "sprout",
+      "roots",
+      "stem",
+      "leaves"
+    ]
+  },
+  {
+    "id": "BQ-38",
+    "question": "Why do we feel scared?",
+    "expectedTopic": "feelings",
+    "coreFact": "We feel scared when the brain thinks something might be unsafe, so the body gets ready to protect us or ask for help.",
+    "sceneTags": [
+      "feelings",
+      "brain",
+      "body",
+      "safe",
+      "help"
+    ]
   }
 ]

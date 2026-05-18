@@ -10,6 +10,8 @@
     "check:ollama:generate": "node scripts/check-ollama.mjs --generate",
     "evaluate:contract": "node scripts/evaluate-contract.mjs",
     "evaluate:contract:live": "node scripts/evaluate-contract.mjs --require-live",
+    "evaluate:ollama:real": "node scripts/evaluate-ollama-real.mjs",
+    "evaluate:ollama:smoke": "node scripts/evaluate-ollama-real.mjs --limit=5",
     "qa:smoke": "node scripts/qa-smoke.mjs"
   },
   "dependencies": {
