@@ -1093,7 +1093,6 @@ export default function StoryCard({
         };
 
         await audioRef.current.play();
-      }
     } catch (err) {
       console.error('Failed to play audio:', err);
       setActiveNarration(null);
