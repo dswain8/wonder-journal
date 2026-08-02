@@ -16,22 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ELEVENLABS_API_KEY is not set' }, { status: 500 });
     }
 
-    // Create a hash of the text and voice to use as the filename
-    const hash = crypto.createHash('sha256').update(`${voiceId}-${text}`).digest('hex');
-    const fileName = `${hash}.mp3`;
-    const audioDir = path.join(process.cwd(), 'public', 'audio');
-    const filePath = path.join(audioDir, fileName);
-
-    // Ensure audio directory exists (for local development)
-    if (!fs.existsSync(audioDir)) {
-      fs.mkdirSync(audioDir, { recursive: true });
-    }
-
-    // Check cache
-    if (fs.existsSync(filePath)) {
-      console.log('Serving audio from cache');
-      return NextResponse.json({ url: `/audio/${fileName}` });
-    }
+    // No local filesystem cache on Vercel, passing through directly.
 
     console.log('Fetching new audio from ElevenLabs');
     // Fetch from ElevenLabs
@@ -58,12 +43,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to generate audio' }, { status: response.status });
     }
 
-    // Save audio file locally (NOTE: will need cloud blob storage for Vercel prod)
+    // Return the audio directly to the browser
     const buffer = await response.arrayBuffer();
-    fs.writeFileSync(filePath, Buffer.from(buffer));
-
-    // Return the public URL
-    return NextResponse.json({ url: `/audio/${fileName}` });
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=31536000',
+      },
+    });
 
   } catch (error) {
     console.error('TTS Error:', error);

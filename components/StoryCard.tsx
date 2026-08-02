@@ -1067,13 +1067,18 @@ export default function StoryCard({
         body: JSON.stringify({ text: textToRead, voiceId }),
       });
       
-      const data = await response.json();
-      if (data.url) {
-        if (!audioRef.current) {
-          audioRef.current = new Audio(data.url);
-        } else {
-          audioRef.current.src = data.url;
-        }
+      if (!response.ok) {
+        throw new Error('TTS request failed');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      if (!audioRef.current) {
+        audioRef.current = new Audio(url);
+      } else {
+        audioRef.current.src = url;
+      }
 
         audioRef.current.ontimeupdate = () => {
           if (audioRef.current && audioRef.current.duration) {
