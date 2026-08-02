@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { WonderGuideId } from '@/lib/types';
 import { FireflyDot, Lamp } from './WonderDecor';
 import WonderGuideAvatar from './WonderGuideAvatar';
+import { motion } from 'framer-motion';
 
 interface StoryLoadingProps {
   childName: string;
@@ -25,7 +26,7 @@ export default function StoryLoading({
   question,
 }: StoryLoadingProps) {
   const [fragmentIndex, setFragmentIndex] = useState(0);
-  const accent = guide === 'nachi' ? '#F3C056' : '#5BC9C2';
+  const accent = guide === 'nachiketh' ? '#F3C056' : '#5BC9C2';
 
   useEffect(() => {
     setFragmentIndex(0);
@@ -92,18 +93,32 @@ export default function StoryLoading({
             />
           </div>
 
-          <p className="wj-caveat mt-12 text-[22px]" style={{ color: accent }}>
+          <motion.p 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            transition={{ duration: 1, delay: 0.2 }}
+            className="wj-caveat mt-12 text-[22px]" style={{ color: accent }}>
             finding the answer…
-          </p>
-          <p className="wj-display mt-3 max-w-[17rem] text-[22px] leading-[1.25] text-[var(--wj-ivory)]">
+          </motion.p>
+          <motion.p 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.4 }}
+            className="wj-display mt-3 max-w-[17rem] text-[22px] leading-[1.25] text-[var(--wj-ivory)]">
             &ldquo;{question || `What is ${childName} wondering?`}&rdquo;
-          </p>
+          </motion.p>
 
           <div className="mt-auto flex w-full flex-col items-center">
             <p className="wj-overline">Gathering</p>
-            <p className="mt-3 wj-display min-h-[3.8rem] max-w-[16rem] text-[22px] leading-[1.25] text-[var(--wj-ivory)]">
+            <motion.p 
+              key={fragmentIndex}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6 }}
+              className="mt-3 wj-display min-h-[3.8rem] max-w-[16rem] text-[22px] leading-[1.25] text-[var(--wj-ivory)]">
               {CLUE_FRAGMENTS[fragmentIndex]}
-            </p>
+            </motion.p>
             <p className="mt-3 max-w-[16rem] text-sm leading-6 text-[var(--wj-muted)]">
               Stay close. The answer is coming in simple words.
             </p>

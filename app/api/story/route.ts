@@ -4,7 +4,7 @@ import { scoreGeneratedAnswerQuality } from '@/lib/answerQuality';
 import { lookupBenchmark } from '@/lib/benchmarks';
 import { generateDummyAnswer } from '@/lib/dummyStory';
 import { matchImage } from '@/lib/matchImage';
-import { getOllamaConfig } from '@/lib/ollama';
+import { getLLMConfig } from '@/lib/llm';
 import {
   generateFastAnswerWithTimings,
   generateStoryFromFastAnswerWithTimings,
@@ -46,18 +46,18 @@ export async function POST(request: NextRequest) {
       storyLead: body.storyLead,
       guide: body.guide,
     });
-    const model = useDummyStories ? 'dummy' : getOllamaConfig().model;
+    const model = useDummyStories ? 'dummy' : getLLMConfig().model;
     const cacheStartedAt = nowMs();
     const cacheKey = buildStoryCacheKey(
       cleanQuestion,
       profile,
       model,
     );
-    const cachedStory = getCachedAnswer(cacheKey.hash);
+    const cachedStory = await getCachedAnswer(cacheKey.hash);
     const cacheMs = nowMs() - cacheStartedAt;
 
     let answerData;
-    let generationMode: 'dummy' | 'ollama' | 'fallback' | 'cache' = 'ollama';
+    let generationMode: 'dummy' | 'llm' | 'fallback' | 'cache' = 'llm';
     let attempts = 1;
     let qualityScore = 0.75;
     let factGenerationMs = 0;
@@ -134,14 +134,14 @@ export async function POST(request: NextRequest) {
         answerData,
         lookupBenchmark(cleanQuestion),
       );
-      saveStoryCachedAnswer(
+      await saveStoryCachedAnswer(
         cacheKey.hash,
         cacheKey.normalizedQuestion,
         profile.childAge,
         model,
         {
           answerData,
-          generationMode: 'ollama',
+          generationMode: 'llm',
           attempts,
           qualityScore,
         },
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       body.save !== false && !answerData.safety_flags.includes('needs-parent-review');
     const persistStartedAt = nowMs();
     const storyId = shouldSave
-      ? saveGeneratedStory({
+      ? await saveGeneratedStory({
           question: cleanQuestion,
           answerData,
           imagePath: image?.path ?? null,

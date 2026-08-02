@@ -1,7 +1,7 @@
 import { scoreGeneratedAnswerQuality } from './answerQuality';
 import { lookupBenchmark } from './benchmarks';
 import { classifyTopicByKeywords } from './generateStory';
-import { generateWithOllama } from './ollama';
+import { generateWithLLM } from './llm';
 import {
   extractJsonObject,
   validateGeneratedAnswerV1,
@@ -41,7 +41,7 @@ RESPONSE FORMAT (STRICT):
 - If you cannot comply, return {}.
 
 JSON STRUCTURE:
-
+{"topic":"topic","fact_answer":"short factual answer","scene_tags":["tag1","tag2"]}`;
 }
 
 function buildStoryOnlySystemPrompt(profile: KidProfile): string {
@@ -93,6 +93,7 @@ export async function generateFastAnswerWithTimings(
   const childName = profile.childName.trim() || DEFAULT_KID_PROFILE.childName;
   const fallbackTopic = classifyTopicByKeywords(question);
   const benchmark = lookupBenchmark(question);
+
   const benchmarkGuidance = benchmark
     ? `
 TRUSTED BENCHMARK FACT:
@@ -105,32 +106,46 @@ You MUST use this fact. Do not contradict it.`
     : '';
 
   const prompt = `My child ${childName} asked: "${question}"
+
 ${benchmarkGuidance}
-Give the short answer first. Do not write the story yet.
+
+Give the short answer first.
+Do not write the story yet.
+
 Respond with ONLY valid JSON matching the required structure.`;
 
   const generationStartedAt = Date.now();
-  const raw = await generateWithOllama(
+
+  const raw = await generateWithLLM(
     prompt,
     buildFastAnswerSystemPrompt(profile),
     { numPredict: 110 },
   );
+
   const factGenerationMs = Date.now() - generationStartedAt;
 
   const parseStartedAt = Date.now();
+
   try {
     const answer = validateFastAnswerV1(extractJsonObject(raw), {
       question,
       topic: benchmark?.expectedTopic ?? fallbackTopic,
       source: benchmark ? 'hybrid' : 'model',
     });
+
     const parseMs = Date.now() - parseStartedAt;
 
-    return { answer, factGenerationMs, parseMs };
+    return {
+      answer,
+      factGenerationMs,
+      parseMs,
+    };
   } catch (error: unknown) {
     const parseMs = Date.now() - parseStartedAt;
+
     const message =
       error instanceof Error ? error.message : 'Unknown parse error';
+
     throw new Error(
       'Fast answer JSON parse failed after ' +
         parseMs +
@@ -146,7 +161,9 @@ export async function generateStoryFromFastAnswer(
   answer: FastAnswerV1,
   profile: KidProfile = DEFAULT_KID_PROFILE,
 ): Promise<GeneratedAnswerV1> {
-  return (await generateStoryFromFastAnswerWithTimings(answer, profile)).answer;
+  return (
+    await generateStoryFromFastAnswerWithTimings(answer, profile)
+  ).answer;
 }
 
 export async function generateStoryFromFastAnswerWithTimings(
@@ -158,23 +175,29 @@ export async function generateStoryFromFastAnswerWithTimings(
   parseMs: number;
 }> {
   const childName = profile.childName.trim() || DEFAULT_KID_PROFILE.childName;
+
   const generationStartedAt = Date.now();
-  const raw = await generateWithOllama(
+
+  const raw = await generateWithLLM(
     `Question: "${answer.question}"
 Correct short answer: "${answer.fact_answer}"
 Topic: ${answer.topic}
 Scene tags: ${answer.scene_tags.join(', ')}
 Child name: ${childName}
 
-Write only the story title and story text. The story must explain the same answer.`,
+Write only the story title and story text.
+The story must explain the same answer.`,
     buildStoryOnlySystemPrompt(profile),
     { numPredict: 520 },
   );
+
   const storyGenerationMs = Date.now() - generationStartedAt;
 
   const parseStartedAt = Date.now();
+
   try {
     const story = extractJsonObject(raw);
+
     const generatedAnswer = validateGeneratedAnswerV1(
       {
         ...(typeof story === 'object' && story !== null ? story : {}),
@@ -195,13 +218,20 @@ Write only the story title and story text. The story must explain the same answe
         source: answer.source,
       },
     );
+
     const parseMs = Date.now() - parseStartedAt;
 
-    return { answer: generatedAnswer, storyGenerationMs, parseMs };
+    return {
+      answer: generatedAnswer,
+      storyGenerationMs,
+      parseMs,
+    };
   } catch (error: unknown) {
     const parseMs = Date.now() - parseStartedAt;
+
     const message =
       error instanceof Error ? error.message : 'Unknown parse error';
+
     throw new Error(
       'Story JSON parse failed after ' +
         parseMs +
@@ -220,5 +250,8 @@ export function scoreFastAnswerQuality(answer: FastAnswerV1): number {
     story_text: `${answer.fact_answer} ${answer.fact_answer}`,
   };
 
-  return scoreGeneratedAnswerQuality(syntheticAnswer, lookupBenchmark(answer.question));
+  return scoreGeneratedAnswerQuality(
+    syntheticAnswer,
+    lookupBenchmark(answer.question),
+  );
 }

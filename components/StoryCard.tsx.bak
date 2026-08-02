@@ -2,7 +2,6 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { getTryTogetherPrompt } from '@/lib/activity';
 import { AnswerSource, WonderGuideId } from '@/lib/types';
 import {
@@ -395,7 +394,7 @@ function playGuideChime(guide: WonderGuideId) {
   const audioContext = new AudioContextClass();
   const now = audioContext.currentTime;
   const gain = audioContext.createGain();
-  const frequencies = guide === 'nachiketh' ? [523.25, 659.25] : [659.25, 880];
+  const frequencies = guide === 'nachi' ? [523.25, 659.25] : [659.25, 880];
 
   gain.connect(audioContext.destination);
   gain.gain.setValueAtTime(0.0001, now);
@@ -957,12 +956,15 @@ export default function StoryCard({
   const [activeNarration, setActiveNarration] = useState<NarrationMode | null>(null);
   const [isNarrationPaused, setIsNarrationPaused] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [activeSentenceIndex, setActiveSentenceIndex] = useState(0);
+  const [selectedVoiceKey, setSelectedVoiceKey] = useState<string | null>(null);
+  const [voicePanelOpen, setVoicePanelOpen] = useState(false);
   const [showStory, setShowStory] = useState(false);
-  
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressStep = useRef(0);
 
-  const accent = guide === 'nachiketh' ? '#F3C056' : '#5BC9C2';
+  const accent = guide === 'nachi' ? '#F3C056' : '#5BC9C2';
   const guideMeta = WONDER_GUIDES[guide];
   const guideName = guideMeta.name;
   const narrationStyle = guideMeta.narration;
@@ -993,108 +995,308 @@ export default function StoryCard({
       factAnswer: answerText,
       specialNarration: specialExperience?.narrationText ?? undefined,
     });
-  }, [answerText, question, specialExperience, story]);
+  }, [
+    answerText,
+    question,
+    specialExperience,
+    story,
+  ]);
 
   const storyNarrationText = useMemo(() => {
-    if (!hasStory) return '';
+    if (!hasStory) {
+      return '';
+    }
+
     return normalizeNarrationText(`${title}. ${story}`);
   }, [hasStory, story, title]);
+
+  const recommendedVoice = useMemo(() => {
+    return pickGuideVoice(voices, guide);
+  }, [guide, voices]);
+
+  const voiceOptions = useMemo(() => {
+    return voices
+      .filter(isEnglishVoice)
+      .sort((a, b) => {
+        const scoreDelta = scoreGuideVoice(b, guide) - scoreGuideVoice(a, guide);
+        if (scoreDelta !== 0) {
+          return scoreDelta;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
+  }, [guide, voices]);
+
+  const selectedVoice = useMemo(() => {
+    if (!selectedVoiceKey) {
+      return null;
+    }
+
+    return voices.find((voice) => getVoiceKey(voice) === selectedVoiceKey) ?? null;
+  }, [selectedVoiceKey, voices]);
+
+  const narrationVoice = selectedVoice ?? recommendedVoice;
+  const voiceFitLabel = describeVoiceFit(narrationVoice);
+
+  const narrationSentences = useMemo(() => {
+    return splitNarrationSentences(narrationText);
+  }, [narrationText]);
+
+  const storyNarrationSentences = useMemo(() => {
+    return splitNarrationSentences(storyNarrationText);
+  }, [storyNarrationText]);
 
   const isAnswerNarrating = activeNarration === 'answer';
   const isStoryNarrating = activeNarration === 'story';
   const isAnswerPlaying = isAnswerNarrating && !isNarrationPaused;
   const isStoryPlaying = isStoryNarrating && !isNarrationPaused;
-  
+  const answerReadSeconds = estimateReadSeconds(narrationText, narrationStyle.rate, 8);
+  const storyReadRate = Math.max(0.72, narrationStyle.rate * 0.9);
+  const storyReadSeconds = hasStory
+    ? estimateReadSeconds(storyNarrationText, storyReadRate, 24)
+    : 0;
+
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      const synth = window.speechSynthesis;
+      const syncVoices = () => {
+        const nextVoices = synth.getVoices();
+        if (nextVoices.length > 0) {
+          setVoices(nextVoices);
+        }
+      };
+
+      syncVoices();
+      synth.onvoiceschanged = syncVoices;
+
+      return () => {
+        if (synth.onvoiceschanged === syncVoices) {
+          synth.onvoiceschanged = null;
+        }
+
+        if (progressTimer.current) {
+          clearInterval(progressTimer.current);
+        }
+
+        synth.cancel();
+      };
+    }
+
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
+      if (progressTimer.current) {
+        clearInterval(progressTimer.current);
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    setSelectedVoiceKey(window.localStorage.getItem(getGuideVoiceStorageKey(guide)));
+  }, [guide]);
 
   useEffect(() => {
     setShowStory(false);
   }, [question]);
 
   useEffect(() => {
-    if (hasStory && storyStatus === 'ready') {
-      setShowStory(true);
+    if (!selectedVoiceKey || voices.length === 0) {
+      return;
     }
-  }, [hasStory, storyStatus]);
 
-  const stopNarration = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    const voiceStillExists = voices.some(
+      (voice) => getVoiceKey(voice) === selectedVoiceKey,
+    );
+
+    if (!voiceStillExists) {
+      setSelectedVoiceKey(null);
     }
-    setActiveNarration(null);
-    setIsNarrationPaused(false);
-    setProgress(0);
+  }, [selectedVoiceKey, voices]);
+
+  const clearProgressTimer = () => {
+    if (progressTimer.current) {
+      clearInterval(progressTimer.current);
+      progressTimer.current = null;
+    }
   };
 
-  const toggleReadAloud = async (mode: NarrationMode) => {
+  const startProgressTimer = (stepAmount = progressStep.current) => {
+    clearProgressTimer();
+    progressStep.current = stepAmount;
+
+    progressTimer.current = setInterval(() => {
+      setProgress((current) => {
+        if (current >= 98) {
+          return current;
+        }
+
+        return Math.min(98, current + stepAmount);
+      });
+    }, 120);
+  };
+
+  const stopNarration = (resetProgress = true) => {
+    clearProgressTimer();
+
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    setActiveNarration(null);
+    setIsNarrationPaused(false);
+
+    if (resetProgress) {
+      setProgress(0);
+      setActiveSentenceIndex(0);
+    }
+  };
+
+  const pauseNarration = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      return;
+    }
+
+    window.speechSynthesis.pause();
+    clearProgressTimer();
+    setIsNarrationPaused(true);
+  };
+
+  const resumeNarration = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      return;
+    }
+
+    window.speechSynthesis.resume();
+    startProgressTimer();
+    setIsNarrationPaused(false);
+  };
+
+  const applyNarrationVoice = (
+    utterance: SpeechSynthesisUtterance,
+    mode: NarrationMode = 'answer',
+  ) => {
+    utterance.lang = narrationVoice?.lang || 'en-IN';
+    utterance.rate =
+      mode === 'story' ? storyReadRate : narrationStyle.rate;
+    utterance.pitch = narrationStyle.pitch;
+
+    if (narrationVoice) {
+      utterance.voice = narrationVoice;
+    }
+  };
+
+  const handleVoiceChoice = (nextVoiceKey: string) => {
+    stopNarration(true);
+
+    if (typeof window !== 'undefined') {
+      const storageKey = getGuideVoiceStorageKey(guide);
+
+      if (nextVoiceKey) {
+        window.localStorage.setItem(storageKey, nextVoiceKey);
+      } else {
+        window.localStorage.removeItem(storageKey);
+      }
+    }
+
+    setSelectedVoiceKey(nextVoiceKey || null);
+  };
+
+  const previewNarratorVoice = () => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      return;
+    }
+
+    stopNarration(true);
+
+    const sampleText =
+      guide === 'gargi'
+        ? 'Let us look closely. The moon is very far away, so it seems to stay with us.'
+        : 'Let us follow the clues. Nearby trees rush past, but the faraway moon looks steady.';
+    const utterance = new SpeechSynthesisUtterance(sampleText);
+    applyNarrationVoice(utterance);
+    utterance.onend = () => {
+      setActiveNarration(null);
+      setIsNarrationPaused(false);
+    };
+    utterance.onerror = () => {
+      setActiveNarration(null);
+      setIsNarrationPaused(false);
+    };
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setActiveNarration('answer');
+    setIsNarrationPaused(false);
+  };
+
+  const toggleReadAloud = (mode: NarrationMode) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      return;
+    }
+
     if (activeNarration === mode) {
       if (isNarrationPaused) {
-        audioRef.current?.play();
-        setIsNarrationPaused(false);
+        resumeNarration();
       } else {
-        audioRef.current?.pause();
-        setIsNarrationPaused(true);
+        pauseNarration();
       }
       return;
     }
 
     if (activeNarration) {
-      stopNarration();
+      stopNarration(true);
     }
 
-    if (mode === 'story' && !hasStory) return;
+    if (mode === 'story' && !hasStory) {
+      return;
+    }
 
-    const textToRead = mode === 'story' ? storyNarrationText : narrationText;
-    const voiceId = guide === 'gargi' ? '8dRG2ER7ThdAWJwK71hG' : 'txk8uOzZ0iCh0B9mFSRG';
+    const script = mode === 'story' ? storyNarrationText : narrationText;
+    const sentences = mode === 'story' ? storyNarrationSentences : narrationSentences;
+    const utterance = new SpeechSynthesisUtterance(script);
+    applyNarrationVoice(utterance, mode);
 
-    setIsAudioLoading(true);
+    const durationMs = Math.max(
+      (mode === 'story' ? storyReadSeconds : answerReadSeconds) * 1000,
+      4200,
+    );
+    const stepAmount = (120 / durationMs) * 100;
+
+    setProgress(0);
+    setActiveSentenceIndex(0);
+    setIsNarrationPaused(false);
+    playGuideChime(guide);
+
+    startProgressTimer(stepAmount);
+
+    utterance.onboundary = (event) => {
+      if (typeof event.charIndex !== 'number') {
+        return;
+      }
+
+      setActiveSentenceIndex(
+        findNarrationSentenceIndex(sentences, event.charIndex),
+      );
+    };
+
+    utterance.onend = () => {
+      clearProgressTimer();
+      setProgress(100);
+      setActiveSentenceIndex(Math.max(0, sentences.length - 1));
+      setActiveNarration(null);
+      setIsNarrationPaused(false);
+    };
+
+    utterance.onerror = () => {
+      stopNarration(true);
+    };
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
     setActiveNarration(mode);
     setIsNarrationPaused(false);
-    setProgress(0);
-
-    try {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: textToRead, voiceId }),
-      });
-      
-      const data = await response.json();
-      if (data.url) {
-        if (!audioRef.current) {
-          audioRef.current = new Audio(data.url);
-        } else {
-          audioRef.current.src = data.url;
-        }
-
-        audioRef.current.ontimeupdate = () => {
-          if (audioRef.current && audioRef.current.duration) {
-            setProgress((audioRef.current.currentTime / audioRef.current.duration) * 100);
-          }
-        };
-
-        audioRef.current.onended = () => {
-          setProgress(100);
-          setActiveNarration(null);
-          setIsNarrationPaused(false);
-        };
-
-        await audioRef.current.play();
-      }
-    } catch (err) {
-      console.error('Failed to play audio:', err);
-      setActiveNarration(null);
-    } finally {
-      setIsAudioLoading(false);
-    }
   };
 
   return (
@@ -1139,9 +1341,7 @@ export default function StoryCard({
             <div className="min-w-0 lg:sticky lg:top-8">
           <div className="mt-4 rounded-[22px] bg-white/6 p-4 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.14)] lg:mt-0">
             <div className="flex items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 type="button"
                 onClick={() => toggleReadAloud('answer')}
                 aria-label={
@@ -1154,7 +1354,7 @@ export default function StoryCard({
                 className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full text-[var(--wj-ivory)]"
                 style={{
                   background:
-                    guide === 'nachiketh'
+                    guide === 'nachi'
                       ? 'linear-gradient(180deg, #f3c056 0%, #8e4412 100%)'
                       : 'linear-gradient(180deg, #5bc9c2 0%, #176060 100%)',
                   boxShadow:
@@ -1171,7 +1371,7 @@ export default function StoryCard({
                     <path d="M3 1 L12 7 L3 13 Z" />
                   </svg>
                 )}
-              </motion.button>
+              </button>
 
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-[var(--wj-ivory)]">
@@ -1197,16 +1397,82 @@ export default function StoryCard({
                         ? 'Paused'
                         : narrationStyle.idleLine}
                   </span>
-                  <span></span>
+                  <span>{answerReadSeconds} sec</span>
                 </div>
               </div>
 
-              {isAudioLoading && (
-                <span className="rounded-full bg-white/8 px-2.5 py-1 text-left text-[11px] font-bold text-white/68 transition hover:bg-white/12">
-                  Loading high-quality voice...
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => setVoicePanelOpen((isOpen) => !isOpen)}
+                className="rounded-full bg-white/8 px-2.5 py-1 text-left text-[11px] font-bold text-white/68 transition hover:bg-white/12"
+                style={{
+                  boxShadow: 'inset 0 0 0 1px rgba(246,238,221,0.14)',
+                }}
+                aria-expanded={voicePanelOpen}
+              >
+                {voiceFitLabel}
+              </button>
             </div>
+
+            <div className="mt-4 rounded-[18px] bg-black/16 px-4 py-3 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.1)]">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/38">
+                  Now playing
+                </p>
+              <p
+                className="mt-1 text-[15px] font-semibold leading-6 transition-colors duration-200"
+                style={{ color: isAnswerNarrating ? accent : 'rgba(246,238,221,0.78)' }}
+              >
+                {isAnswerNarrating
+                  ? narrationSentences[activeSentenceIndex]?.text ?? narrationStyle.idleLine
+                  : narrationStyle.idleLine}
+              </p>
+            </div>
+
+            {voicePanelOpen ? (
+              <div className="mt-3 rounded-[18px] bg-white/[0.07] px-4 py-4 shadow-[inset_0_0_0_1px_rgba(246,238,221,0.12)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/42">
+                      Narrator voice
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-white/62">
+                      {narrationVoice
+                        ? `${getVoiceLabel(narrationVoice)}`
+                        : 'Your browser has not shared voice options yet.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={previewNarratorVoice}
+                    disabled={!voices.length}
+                    className="shrink-0 rounded-full bg-white/10 px-3 py-2 text-xs font-extrabold text-[var(--wj-ivory)] transition hover:bg-white/14 disabled:opacity-40"
+                  >
+                    Test
+                  </button>
+                </div>
+
+                <select
+                  value={selectedVoiceKey ?? ''}
+                  onChange={(event) => handleVoiceChoice(event.target.value)}
+                  className="mt-3 w-full rounded-[14px] border border-white/10 bg-[#181331] px-3 py-3 text-sm font-semibold text-[var(--wj-ivory)] outline-none"
+                >
+                  <option value="">
+                    Auto-pick the warmest Indian English voice
+                  </option>
+                  {voiceOptions.map((voice) => (
+                    <option key={getVoiceKey(voice)} value={getVoiceKey(voice)}>
+                      {getVoiceLabel(voice)}
+                    </option>
+                  ))}
+                </select>
+
+                <p className="mt-3 text-[11px] leading-5 text-white/45">
+                  Browser narration uses voices installed on this device. If an Indian
+                  English voice is missing here, install one in system voices or use a
+                  local TTS layer later for product-quality audio.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <TryTogetherCard prompt={tryThisPrompt} />
@@ -1295,7 +1561,7 @@ export default function StoryCard({
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--wj-ivory)]"
                       style={{
                         background:
-                          guide === 'nachiketh'
+                          guide === 'nachi'
                             ? 'linear-gradient(180deg, #f3c056 0%, #8e4412 100%)'
                             : 'linear-gradient(180deg, #5bc9c2 0%, #176060 100%)',
                         boxShadow:
@@ -1327,7 +1593,9 @@ export default function StoryCard({
                       </span>
                     </span>
 
-                    <span className="shrink-0 text-[11px] font-bold text-[var(--wj-terracotta)]"></span>
+                    <span className="shrink-0 text-[11px] font-bold text-[var(--wj-terracotta)]">
+                      {storyReadSeconds} sec
+                    </span>
                   </button>
 
                   <div className="mt-3 h-1 rounded-full bg-[#ead8b4]">
@@ -1343,7 +1611,7 @@ export default function StoryCard({
                   {isStoryNarrating ? (
                     <p className="mt-3 rounded-[14px] bg-white/60 px-3 py-2 text-sm font-semibold leading-6 text-[var(--wj-ink)]">
                       {isStoryPlaying ? '' : 'Paused: '}
-                      {title}
+                      {storyNarrationSentences[activeSentenceIndex]?.text ?? title}
                     </p>
                   ) : null}
                 </div>
@@ -1355,15 +1623,13 @@ export default function StoryCard({
           </div>
 
           {onAskAnother ? (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               type="button"
               onClick={onAskAnother}
-              className="wj-primary-btn mt-5 w-full backdrop-blur-sm"
+              className="wj-primary-btn mt-5 w-full"
             >
               Ask another question
-            </motion.button>
+            </button>
           ) : null}
             </div>
           </div>

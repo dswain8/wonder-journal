@@ -28,14 +28,93 @@ const TOPIC_KEYWORDS: Record<StoryTopic, string[]> = {
     'bird',
     'purr',
   ],
-  space: ['moon', 'star', 'stars', 'sun', 'planet', 'sky', 'space', 'earth'],
-  nature: ['tree', 'flower', 'flowers', 'plant', 'leaf', 'seed', 'river', 'mountain'],
-  body: ['heart', 'heartbeat', 'blood', 'bone', 'brain', 'lungs', 'tummy', 'hiccup'],
-  food: ['food', 'popcorn', 'rice', 'milk', 'mango', 'bread', 'taste', 'cook'],
-  weather: ['rain', 'rainbow', 'cloud', 'wind', 'storm', 'snow', 'weather'],
-  ocean: ['ocean', 'sea', 'wave', 'waves', 'beach', 'whale', 'shark', 'tide'],
-  transport: ['car', 'train', 'airplane', 'plane', 'bus', 'wheel', 'vehicle'],
-  colors: ['color', 'colors', 'colour', 'red', 'blue', 'green', 'shadow', 'light'],
+
+  space: [
+    'moon',
+    'star',
+    'stars',
+    'sun',
+    'planet',
+    'sky',
+    'space',
+    'earth',
+  ],
+
+  nature: [
+    'tree',
+    'flower',
+    'flowers',
+    'plant',
+    'leaf',
+    'seed',
+    'river',
+    'mountain',
+  ],
+
+  body: [
+    'heart',
+    'heartbeat',
+    'blood',
+    'bone',
+    'brain',
+    'lungs',
+    'tummy',
+    'hiccup',
+  ],
+
+  food: [
+    'food',
+    'popcorn',
+    'rice',
+    'milk',
+    'mango',
+    'bread',
+    'taste',
+    'cook',
+  ],
+
+  weather: [
+    'rain',
+    'rainbow',
+    'cloud',
+    'wind',
+    'storm',
+    'snow',
+    'weather',
+  ],
+
+  ocean: [
+    'ocean',
+    'sea',
+    'wave',
+    'waves',
+    'beach',
+    'whale',
+    'shark',
+    'tide',
+  ],
+
+  transport: [
+    'car',
+    'train',
+    'airplane',
+    'plane',
+    'bus',
+    'wheel',
+    'vehicle',
+  ],
+
+  colors: [
+    'color',
+    'colors',
+    'colour',
+    'red',
+    'blue',
+    'green',
+    'shadow',
+    'light',
+  ],
+
   mythology: [
     'krishna',
     'hanuman',
@@ -54,6 +133,7 @@ const TOPIC_KEYWORDS: Record<StoryTopic, string[]> = {
     'goddess',
     'deity',
   ],
+
   culture: [
     'diwali',
     'holi',
@@ -64,47 +144,134 @@ const TOPIC_KEYWORDS: Record<StoryTopic, string[]> = {
     'temple',
     'tradition',
   ],
-  history: ['history', 'king', 'queen', 'emperor', 'ancient', 'old days', 'freedom'],
-  people: ['who is', 'who was', 'person', 'people', 'teacher', 'scientist', 'artist'],
-  music: ['music', 'song', 'sing', 'dance', 'dancing', 'flute', 'drum', 'tabla'],
-  feelings: ['feel', 'feeling', 'happy', 'sad', 'angry', 'scared', 'brave', 'love'],
-  wonder: ['wonder', 'question', 'curious', 'why'],
+
+  history: [
+    'history',
+    'king',
+    'queen',
+    'emperor',
+    'ancient',
+    'old days',
+    'freedom',
+  ],
+
+  people: [
+    'who is',
+    'who was',
+    'person',
+    'people',
+    'teacher',
+    'scientist',
+    'artist',
+  ],
+
+  music: [
+    'music',
+    'song',
+    'sing',
+    'dance',
+    'dancing',
+    'flute',
+    'drum',
+    'tabla',
+  ],
+
+  feelings: [
+    'feel',
+    'feeling',
+    'happy',
+    'sad',
+    'angry',
+    'scared',
+    'brave',
+    'love',
+  ],
+
+  wonder: [
+    'wonder',
+    'question',
+    'curious',
+    'why',
+  ],
 };
 
-function tokenize(value: string): Set<string> {
+function safeLower(value: unknown): string {
+  return typeof value === 'string'
+    ? value.toLowerCase()
+    : '';
+}
+
+function tokenize(value: unknown): Set<string> {
   return new Set(
-    value
-      .toLowerCase()
+    safeLower(value)
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
       .filter(Boolean),
   );
 }
 
-function phraseMatches(haystack: string, phrase: string, tokens: Set<string>): boolean {
-  const normalizedPhrase = phrase.toLowerCase().trim();
+function phraseMatches(
+  haystack: unknown,
+  phrase: unknown,
+  tokens: Set<string>,
+): boolean {
+  const normalizedHaystack = safeLower(haystack);
 
-  if (normalizedPhrase.includes(' ')) {
-    return haystack.includes(normalizedPhrase);
+  const normalizedPhrase = safeLower(phrase).trim();
+
+  if (!normalizedPhrase) {
+    return false;
   }
 
-  return tokens.has(normalizedPhrase) || tokens.has(`${normalizedPhrase}s`);
+  if (normalizedPhrase.includes(' ')) {
+    return normalizedHaystack.includes(
+      normalizedPhrase,
+    );
+  }
+
+  return (
+    tokens.has(normalizedPhrase) ||
+    tokens.has(`${normalizedPhrase}s`)
+  );
 }
 
 export function scoreTopicEvidence(
   question: string,
   factAnswer = '',
 ): TopicEvidence {
-  const combined = `${question} ${factAnswer}`.toLowerCase();
-  const tokens = tokenize(combined);
+  const combined = `${question ?? ''} ${factAnswer ?? ''}`;
+
+  const normalizedCombined =
+    safeLower(combined);
+
+  const tokens = tokenize(normalizedCombined);
+
+  const questionTokens = tokenize(question);
+
   const scored = VALID_TOPICS.map((topic) => {
-    const hits = TOPIC_KEYWORDS[topic].filter((keyword) =>
-      phraseMatches(combined, keyword, tokens),
+    const keywords =
+      TOPIC_KEYWORDS[topic] ?? [];
+
+    const hits = keywords.filter((keyword) =>
+      phraseMatches(
+        normalizedCombined,
+        keyword,
+        tokens,
+      ),
     );
-    const directQuestionHits = TOPIC_KEYWORDS[topic].filter((keyword) =>
-      phraseMatches(question.toLowerCase(), keyword, tokenize(question)),
-    );
-    const score = hits.length + directQuestionHits.length * 0.8;
+
+    const directQuestionHits =
+      keywords.filter((keyword) =>
+        phraseMatches(
+          question,
+          keyword,
+          questionTokens,
+        ),
+      );
+
+    const score =
+      hits.length +
+      directQuestionHits.length * 0.8;
 
     return {
       topic,
@@ -115,7 +282,10 @@ export function scoreTopicEvidence(
 
   const best = scored[0];
 
-  if (tokens.has('peacock') || tokens.has('peacocks')) {
+  if (
+    tokens.has('peacock') ||
+    tokens.has('peacocks')
+  ) {
     return {
       topic: 'animals',
       confidence: 0.86,
@@ -123,7 +293,10 @@ export function scoreTopicEvidence(
     };
   }
 
-  if (tokens.has('leaf') || tokens.has('leaves')) {
+  if (
+    tokens.has('leaf') ||
+    tokens.has('leaves')
+  ) {
     return {
       topic: 'nature',
       confidence: 0.78,
@@ -132,8 +305,11 @@ export function scoreTopicEvidence(
   }
 
   if (
-    /\bwhy\s+is\s+the\s+sky\s+blue\b/.test(combined) ||
-    (tokens.has('sky') && tokens.has('blue'))
+    /\bwhy\s+is\s+the\s+sky\s+blue\b/.test(
+      normalizedCombined,
+    ) ||
+    (tokens.has('sky') &&
+      tokens.has('blue'))
   ) {
     return {
       topic: 'colors',
@@ -142,12 +318,31 @@ export function scoreTopicEvidence(
     };
   }
 
-  if (!best || best.score <= 0 || best.topic === 'wonder') {
-    return { topic: 'wonder', confidence: 0, hits: [] };
+  if (
+    !best ||
+    best.score <= 0 ||
+    best.topic === 'wonder'
+  ) {
+    return {
+      topic: 'wonder',
+      confidence: 0,
+      hits: [],
+    };
   }
 
-  const secondScore = scored[1]?.score ?? 0;
-  const confidence = Math.min(1, Number(((best.score - secondScore * 0.45) / 3).toFixed(2)));
+  const secondScore =
+    scored[1]?.score ?? 0;
+
+  const confidence = Math.min(
+    1,
+    Number(
+      (
+        (best.score -
+          secondScore * 0.45) /
+        3
+      ).toFixed(2),
+    ),
+  );
 
   return {
     topic: best.topic,
@@ -164,41 +359,65 @@ export function alignTopic({
   question: string;
   factAnswer?: string;
   proposedTopic: StoryTopic;
-}): { topic: StoryTopic; confidence: number; reason: string } {
-  const evidence = scoreTopicEvidence(question, factAnswer);
+}): {
+  topic: StoryTopic;
+  confidence: number;
+  reason: string;
+} {
+  const evidence =
+    scoreTopicEvidence(
+      question,
+      factAnswer,
+    );
 
   if (evidence.confidence >= 0.5) {
     return {
       topic: evidence.topic,
-      confidence: evidence.confidence,
-      reason: `semantic evidence: ${evidence.hits.join(', ')}`,
+      confidence:
+        evidence.confidence,
+      reason: `semantic evidence: ${evidence.hits.join(
+        ', ',
+      )}`,
     };
   }
 
   if (
     proposedTopic !== 'wonder' &&
-    HIGH_RISK_SPECIFIC_TOPICS.has(proposedTopic) &&
+    HIGH_RISK_SPECIFIC_TOPICS.has(
+      proposedTopic,
+    ) &&
     evidence.topic !== proposedTopic
   ) {
     return {
       topic: 'wonder',
-      confidence: evidence.confidence,
+      confidence:
+        evidence.confidence,
       reason: `low-confidence ${proposedTopic} fallback`,
     };
   }
 
-  if (VALID_TOPICS.includes(proposedTopic) && proposedTopic !== 'wonder') {
+  if (
+    VALID_TOPICS.includes(
+      proposedTopic,
+    ) &&
+    proposedTopic !== 'wonder'
+  ) {
     return {
       topic: proposedTopic,
-      confidence: Math.max(0.35, evidence.confidence),
-      reason: 'accepted non-risk proposed topic',
+      confidence: Math.max(
+        0.35,
+        evidence.confidence,
+      ),
+      reason:
+        'accepted non-risk proposed topic',
     };
   }
 
   return {
     topic: 'wonder',
     confidence: evidence.confidence,
-    reason: 'generic wonder fallback',
+    reason:
+      'generic wonder fallback',
   };
 }
 
@@ -211,6 +430,14 @@ export function hasSemanticMismatch({
   factAnswer?: string;
   topic: StoryTopic;
 }): boolean {
-  const aligned = alignTopic({ question, factAnswer, proposedTopic: topic });
-  return aligned.topic !== topic && aligned.confidence >= 0.5;
+  const aligned = alignTopic({
+    question,
+    factAnswer,
+    proposedTopic: topic,
+  });
+
+  return (
+    aligned.topic !== topic &&
+    aligned.confidence >= 0.5
+  );
 }

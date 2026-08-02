@@ -118,7 +118,7 @@ function GargiSvg({
   );
 }
 
-function NachiSvg({
+function NachikethSvg({
   size,
   expression,
   floating,
@@ -226,9 +226,9 @@ export default function WonderGuideAvatar({
 }: WonderGuideAvatarProps) {
   const px = SIZE_MAP[size];
 
-  if (guide === 'nachi') {
+  if (guide === 'nachiketh') {
     return (
-      <NachiSvg
+      <NachikethSvg
         size={px}
         expression={expression}
         floating={floating}

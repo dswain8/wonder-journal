@@ -41,7 +41,7 @@ export type AnswerSource = 'benchmark' | 'model' | 'hybrid' | 'fallback';
 
 export type StoryLead = 'girl' | 'boy' | 'neutral';
 
-export type WonderGuideId = 'gargi' | 'nachi';
+export type WonderGuideId = 'gargi' | 'nachiketh';
 
 export interface KidProfile {
   childName: string;
@@ -129,7 +129,7 @@ export interface GenerateResponse {
   source: AnswerSource;
   quality_score: number;
   saved: boolean;
-  generation_mode: 'dummy' | 'ollama' | 'fallback';
+  generation_mode: 'dummy' | 'llm' | 'fallback';
   attempts: number;
   cache_hit?: boolean;
   story_status?: 'ready' | 'generating' | 'failed';
@@ -143,7 +143,7 @@ export interface GenerateResponse {
     ollama_ms: number;
     parse_ms: number;
     total_ms: number;
-    generation_mode: 'dummy' | 'ollama' | 'fallback' | 'cache';
+    generation_mode: 'dummy' | 'llm' | 'fallback' | 'cache';
     attempts: number;
   };
   timing?: {
@@ -178,7 +178,7 @@ export interface FastAnswerResponse {
   source: AnswerSource;
   quality_score: number;
   saved: boolean;
-  generation_mode: 'dummy' | 'ollama' | 'fallback' | 'cache';
+  generation_mode: 'dummy' | 'llm' | 'fallback' | 'cache';
   attempts: number;
   cache_hit?: boolean;
   story_status: 'ready' | 'generating' | 'failed';

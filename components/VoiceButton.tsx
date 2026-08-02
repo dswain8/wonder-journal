@@ -41,7 +41,7 @@ export default function VoiceButton({
 
     if (isListening) {
       recognitionRef.current?.stop();
-      updateListening(false);
+      // we do not call updateListening(false) here, we let onend handle it to submit the final transcript
       return;
     }
 
@@ -56,14 +56,26 @@ export default function VoiceButton({
 
     const recognition = new SR();
     recognition.lang = 'en-IN';
+    recognition.continuous = true;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    
+    let fullTranscript = '';
+    
     recognition.onresult = (event: any) => {
-      onTranscript(event.results[0][0].transcript);
-      updateListening(false);
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          fullTranscript += event.results[i][0].transcript + ' ';
+        }
+      }
     };
     recognition.onerror = () => updateListening(false);
-    recognition.onend = () => updateListening(false);
+    recognition.onend = () => {
+      updateListening(false);
+      if (fullTranscript.trim()) {
+        onTranscript(fullTranscript.trim());
+      }
+    };
 
     recognitionRef.current = recognition;
     recognition.start();

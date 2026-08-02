@@ -7,9 +7,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const stories = db
-      .prepare('SELECT * FROM stories ORDER BY created_at DESC')
-      .all() as Story[];
+    const rs = await db.execute('SELECT * FROM stories ORDER BY created_at DESC');
+    const stories = rs.rows as unknown as Story[];
 
     return NextResponse.json(stories);
   } catch {

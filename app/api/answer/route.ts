@@ -5,7 +5,7 @@ import { lookupBenchmark } from '@/lib/benchmarks';
 import { generateDummyAnswer } from '@/lib/dummyStory';
 import { createSensitiveQuestionAnswer } from '@/lib/fallbackAnswer';
 import { matchImage } from '@/lib/matchImage';
-import { getOllamaConfig } from '@/lib/ollama';
+import { getLLMConfig } from '@/lib/llm';
 import { generateFastAnswer, scoreFastAnswerQuality } from '@/lib/progressiveAnswer';
 import { detectSensitiveQuestion } from '@/lib/safety';
 import { validateQuestion, getProfileFromBody, nowMs } from '@/lib/apiRequest';
@@ -36,14 +36,14 @@ export async function POST(request: NextRequest) {
 
     const cleanQuestion = questionResult.question;
     const profile = getProfileFromBody(body);
-    const model = useDummyStories ? 'dummy' : getOllamaConfig().model;
+    const model = useDummyStories ? 'dummy' : getLLMConfig().model;
     const cacheStartedAt = nowMs();
     const cacheKey = buildFactCacheKey(
       cleanQuestion,
       profile,
       model,
     );
-    const cachedStory = getCachedAnswer(cacheKey.hash);
+    const cachedStory = await getCachedAnswer(cacheKey.hash);
     const cacheMs = nowMs() - cacheStartedAt;
 
     if (cachedStory) {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     const sensitiveQuestion = detectSensitiveQuestion(cleanQuestion);
     const answerStartedAt = nowMs();
     let answerData;
-    let generationMode: 'dummy' | 'ollama' | 'fallback';
+    let generationMode: 'dummy' | 'llm' | 'fallback';
     let attempts = 1;
     let qualityScore = 0.75;
 
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         story_title: 'Story coming soon',
         story_text: '',
       };
-      generationMode = 'ollama';
+      generationMode = 'llm';
       qualityScore = scoreFastAnswerQuality(fastAnswer);
     }
 
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         ? 'ready'
         : 'generating';
 
-    saveFactCachedAnswer(
+    await saveFactCachedAnswer(
       cacheKey.hash,
       cacheKey.normalizedQuestion,
       profile.childAge,
@@ -200,8 +200,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: message.includes('timed out') || message.includes('timeout')
-            ? 'Ollama is taking too long. Please try again or use a smaller local model.'
-            : 'Cannot connect to Ollama. Please make sure Ollama is running.',
+            ? 'The AI is taking too long to respond. Please try again.'
+            : 'Cannot connect to the AI API. Please check your network and API key.',
         },
         { status: 503 },
       );

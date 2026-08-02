@@ -33,7 +33,7 @@ export function getProfileFromBody(body: {
         ? (body.storyLead as StoryLead)
         : DEFAULT_KID_PROFILE.storyLead,
     guide:
-      body.guide === 'nachi' || body.guide === 'gargi'
+      body.guide === 'nachiketh' || body.guide === 'gargi'
         ? (body.guide as WonderGuideId)
         : DEFAULT_KID_PROFILE.guide,
   };

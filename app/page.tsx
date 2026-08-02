@@ -10,6 +10,7 @@ import StoryLoading from '@/components/StoryLoading';
 import { APP_PROFILE_EVENT, APP_PROFILE_STORAGE_KEY } from '@/lib/appProfile';
 import { AppProfile, GenerateResponse } from '@/lib/types';
 import { DEFAULT_APP_PROFILE } from '@/lib/wonderGuides';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const SAMPLE_QUESTIONS = [
   'Why does the moon follow our car?',
@@ -33,7 +34,7 @@ function sanitizeProfile(profile: AppProfile): AppProfile {
         ? profile.storyLead
         : DEFAULT_APP_PROFILE.storyLead,
     guide:
-      profile.guide === 'nachi' || profile.guide === 'gargi'
+      profile.guide === 'nachiketh' || profile.guide === 'gargi'
         ? profile.guide
         : DEFAULT_APP_PROFILE.guide,
     onboardingComplete: Boolean(profile.onboardingComplete),
@@ -112,7 +113,7 @@ export default function Home() {
       setStory(fastAnswer);
       setIsLoading(false);
     } catch {
-      setError('Could not connect. Is Ollama running?');
+      setError('Could not connect to the AI. Please check your network and API key.');
     } finally {
       setIsLoading(false);
     }
@@ -207,7 +208,7 @@ export default function Home() {
         description="Add the parent and child details once, then choose a curious guide for the child’s questions."
         notes={[
           { label: 'Why this matters', value: 'The answer should feel personal without making the child fill out forms.' },
-          { label: 'Guides', value: 'Gargi and Nachi bring an Indian-rooted spirit of curiosity into the experience.' },
+          { label: 'Guides', value: 'Gargi and Nachiketh bring an Indian-rooted spirit of curiosity into the experience.' },
         ]}
         checklist={[
           'Does setup feel parent-friendly without becoming form-heavy?',
@@ -272,8 +273,15 @@ export default function Home() {
           'Would a parent trust this enough to use it repeatedly with a real LLM behind it?',
         ]}
       >
-        <div>
-          <div className="mx-auto mb-4 flex w-full max-w-[420px] items-center justify-between px-1">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={story.question}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+          >
+            <div className="mx-auto mb-4 flex w-full max-w-[420px] items-center justify-between px-1">
             <button
               type="button"
               onClick={() => {
@@ -339,7 +347,8 @@ export default function Home() {
               setActiveQuestion('');
             }}
           />
-        </div>
+          </motion.div>
+        </AnimatePresence>
       </DesktopStage>
     );
   }
@@ -350,13 +359,13 @@ export default function Home() {
       title="Do not let a good question disappear."
       description="Ask out loud, type quietly, or pick a starter wonder. The answer becomes something the family can revisit."
       notes={[
-        { label: 'Current guide', value: profile.guide === 'nachi' ? 'Nachi · the spark' : 'Gargi · the listener' },
+        { label: 'Current guide', value: profile.guide === 'nachiketh' ? 'Nachiketh · the spark' : 'Gargi · the listener' },
         { label: 'Shape', value: 'Voice first for the child, typed fallback for the parent, and a saved journal for later.' },
       ]}
       checklist={[
         'Laptop: does this feel intentional rather than like a blown-up phone screenshot?',
         'Phone: does the wand remain the clear primary action?',
-        'Real Ollama: once you point the app to your running laptop model, does the full loop still feel fast enough?',
+        'Real AI: once you connect the app to the Grok API, does the full loop still feel fast enough?',
       ]}
     >
       <div>

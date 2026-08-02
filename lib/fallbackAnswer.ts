@@ -12,7 +12,7 @@ export function createSafeFallbackAnswer(
   profile: KidProfile = DEFAULT_KID_PROFILE,
 ): GeneratedAnswerV1 {
   const childName = profile.childName.trim() || DEFAULT_KID_PROFILE.childName;
-  const guideName = profile.guide === 'nachi' ? 'Nachi' : 'Gargi';
+  const guideName = profile.guide === 'nachiketh' ? 'Nachiketh' : 'Gargi';
   const topic = classifyTopicByKeywords(question);
 
   return validateGeneratedAnswerV1(
@@ -45,7 +45,7 @@ export function createSensitiveQuestionAnswer(
   safetyFlags: SafetyFlag[] = ['needs-parent-review'],
 ): GeneratedAnswerV1 {
   const childName = profile.childName.trim() || DEFAULT_KID_PROFILE.childName;
-  const guideName = profile.guide === 'nachi' ? 'Nachi' : 'Gargi';
+  const guideName = profile.guide === 'nachiketh' ? 'Nachiketh' : 'Gargi';
   const topic = classifyTopicByKeywords(question);
 
   return validateGeneratedAnswerV1(

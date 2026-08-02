@@ -33,7 +33,7 @@ export default function QuestionInput({
   const [isListening, setIsListening] = useState(false);
   const [showParentPanel, setShowParentPanel] = useState(false);
 
-  const guideAccent = profile.guide === 'nachi' ? '#F3C056' : '#5BC9C2';
+  const guideAccent = profile.guide === 'nachiketh' ? '#F3C056' : '#5BC9C2';
 
   const getRandomQuestion = () => {
     if (sampleQuestions.length === 0) {
@@ -156,7 +156,7 @@ export default function QuestionInput({
               className="wj-caveat text-[22px]"
               style={{ color: guideAccent }}
             >
-              {profile.guide === 'nachi' ? 'Nachi is listening' : 'Gargi is listening'}
+              {profile.guide === 'nachiketh' ? 'Nachiketh is listening' : 'Gargi is listening'}
             </p>
             <h1 className="wj-display mt-1 text-[30px] leading-[1.05] text-[var(--wj-ivory)] lg:text-[44px]">
               What are you
@@ -211,7 +211,11 @@ export default function QuestionInput({
             </div>
 
             <p className="mt-5 text-sm font-bold tracking-[0.08em] text-white/90">
-              {isListening ? "I'm listening..." : 'tap when you are ready'}
+              {isListening ? (
+                <span className="animate-pulse text-[#ffd766]">Tap the wand again when you are done</span>
+              ) : (
+                'tap when you are ready'
+              )}
             </p>
           </div>
 

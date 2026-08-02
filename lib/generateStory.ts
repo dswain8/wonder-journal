@@ -7,7 +7,7 @@ import {
   StoryTopic,
   VALID_TOPICS,
 } from './types';
-import { generateWithOllama } from './ollama';
+import { generateWithLLM } from './llm';
 import {
   extractJsonObject,
   toGeneratedStory,
@@ -103,7 +103,7 @@ Use ${childName} as the main character in the story.
 Respond with ONLY valid JSON matching the required schema.`;
 
   const ollamaStartedAt = Date.now();
-  const raw = await generateWithOllama(prompt, buildStorySystemPrompt(profile));
+  const raw = await generateWithLLM(prompt, buildStorySystemPrompt(profile));
   const ollamaMs = Date.now() - ollamaStartedAt;
 
   const parseStartedAt = Date.now();

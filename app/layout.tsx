@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Caveat, DM_Serif_Display, Nunito } from 'next/font/google';
 import './globals.css';
 
@@ -21,6 +21,22 @@ const caveat = Caveat({
 export const metadata: Metadata = {
   title: 'Wonder Journal',
   description: 'A gentle place for little questions and the stories they deserve.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Wonder Journal',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#120f29',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

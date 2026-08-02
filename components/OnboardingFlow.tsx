@@ -115,7 +115,7 @@ export default function OnboardingFlow({
               </div>
               <div className="ml-[-1.9rem]">
                 <WonderGuideAvatar
-                  guide="nachi"
+                  guide="nachiketh"
                   size="lg"
                   expression="curious"
                   floating
@@ -424,7 +424,7 @@ export default function OnboardingFlow({
               className="pointer-events-none absolute left-1/2 top-32 h-72 w-72 -translate-x-1/2 rounded-full wj-pulse"
               style={{
                 background:
-                  profile.guide === 'nachi'
+                  profile.guide === 'nachiketh'
                     ? 'radial-gradient(circle, rgba(232,154,42,0.34), transparent 62%)'
                     : 'radial-gradient(circle, rgba(43,133,133,0.34), transparent 62%)',
               }}

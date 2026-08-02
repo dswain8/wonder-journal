@@ -16,9 +16,11 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid story id' }, { status: 400 });
     }
 
-    const story = db
-      .prepare('SELECT * FROM stories WHERE id = ?')
-      .get(storyId) as Story | undefined;
+    const rs = await db.execute({
+      sql: 'SELECT * FROM stories WHERE id = ?',
+      args: [storyId]
+    });
+    const story = rs.rows[0] as unknown as Story | undefined;
 
     if (!story) {
       return NextResponse.json({ error: 'Story not found' }, { status: 404 });

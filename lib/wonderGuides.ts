@@ -79,14 +79,14 @@ export const WONDER_GUIDES: Record<WonderGuideId, WonderGuide> = {
       ],
     },
   },
-  nachi: {
-    id: 'nachi',
-    name: 'Nachi',
-    fullName: 'Nachiketa',
+  nachiketh: {
+    id: 'nachiketh',
+    name: 'Nachiketh',
+    fullName: 'Nachiketh',
     shortLabel: 'The spark',
-    childLine: 'Warm, bright, and curious. Nachi keeps following every why until it becomes a story.',
+    childLine: 'Warm, bright, and curious. Nachiketh keeps following every why until it becomes a story.',
     importance:
-      'Inspired by Nachiketa, the truth-seeking child of the Katha Upanishad, remembered for asking again and again instead of settling for easy answers.',
+      'Inspired by Nachiketh, the truth-seeking child of the Katha Upanishad, remembered for asking again and again instead of settling for easy answers.',
     sourceLine: 'Inspired by a child seeker. Reimagined here as a warm companion.',
     palette: {
       chip: 'bg-[#ffe1b1] text-[#4f2410]',
@@ -95,8 +95,8 @@ export const WONDER_GUIDES: Record<WonderGuideId, WonderGuide> = {
     },
     narration: {
       label: 'Sunny, clear story voice',
-      idleLine: 'Tap to hear Nachi explain slowly',
-      playingLine: 'Nachi is reading the answer',
+      idleLine: 'Tap to hear Nachiketh explain slowly',
+      playingLine: 'Nachiketh is reading the answer',
       speedLabel: 'clear',
       intro: 'Let us follow the clues.',
       outro: '',
